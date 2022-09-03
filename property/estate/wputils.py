@@ -464,7 +464,9 @@ def get_data_from_msg(string,mobile,multi= False):
         i = i+1
     if not estate_list:
         print("here")
-        return False
+        if multi:
+            return False
+        return estate
         # if "apartment" not in estate.keys():
         #     estate["apartment"] = "any"
         # if "number_of_bedrooms" not in estate.keys():
