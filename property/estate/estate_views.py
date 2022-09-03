@@ -1,7 +1,3 @@
-from asyncio import FastChildWatcher
-from email import message
-from selectors import EpollSelector
-import time
 from rest_framework.generics import ListAPIView ,CreateAPIView,DestroyAPIView,UpdateAPIView
 from rest_framework.response import Response
 from rest_framework import status
