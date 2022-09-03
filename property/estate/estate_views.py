@@ -90,13 +90,8 @@ def get_data_from_wp(request):
         serializer = EstateWPSerializer(data= json.loads(request.body))
         if serializer.is_valid():
             data = get_data_from_msg(**serializer.data,mobile=request.user.mobile)
-            new_data = {}
-            print(data)
-            for keys in data:
-                if data[keys]:
-                    new_data = data[keys]
-                    break
-            return ReturnResponse(data=new_data,success=True,msg="created sucessfully", status=status.HTTP_200_OK)
+            
+            return ReturnResponse(data=data,success=True,msg="created sucessfully", status=status.HTTP_200_OK)
         else:
             print(serializer.errors)
             return ReturnResponse(errors=serializer.errors,success=False,msg="invalid data", status=status.HTTP_400_BAD_REQUEST)
