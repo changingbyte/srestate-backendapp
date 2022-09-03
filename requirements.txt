@@ -31,3 +31,4 @@ websockets == 10.1
 asyncio == 3.4.3
 asgiref == 3.5.0
 celery == 4.4.7
+gevent
