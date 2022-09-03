@@ -1,22 +1,47 @@
-from cgi import print_arguments
-from hashlib import new
-from lib2to3.pygram import python_grammar_no_print_statement
-from nis import match
 import re
 import json
+from property.location.location_views import db
+from srestate.config import CACHES
+from property.models import Estate
+import redis
 
+cache = redis.Redis(
+    host=CACHES["default"]["host"],
+    port=CACHES["default"]["port"], 
+    password=CACHES["default"]["password"])
+
+required_fields = {
+    "area":[],
+    "estate_status":[],
+    "apartment":[],
+    "furniture":["WITH FULL FURNITURE", "Full Furnished" ,"naked","Fully Furnished","Semi Furnished","luxurious furnished","furnished","Renovated"],
+    "property_type":[],
+}
+
+mapping_db = {
+    "area":["area_name",db.property_area.find({},{"area_name":1,"_id":0})],
+    "estate_status":["estate_status_name",db.property_estatestatus.find({},{"estate_status_name":1,"_id":0})],
+    "apartment":["apartment_name",db.property_apartment.find({},{"apartment_name":1,"_id":0})],
+    "property_type":["type_name",db.property_estatetype.find({},{"type_name":1,"_id":0})]
+}
+
+def findOptimized(required_fields,mapping_db):
+    if "required_fields" in cache:
+        return json.loads(cache.get("required_fields"))
+
+    for key,value  in mapping_db.items(): 
+        required_fields[key] = [ x[value[0]].lower() for x in   list(value[1]) ]
+    jobject = json.dumps(required_fields)
+    cache.setex(name= "required_fields", value=jobject, time=60*60)
+    return required_fields
 
 
 def checkisdigit(inputstring):
-    if True in [char.isdigit() for char in inputstring]:
-        return True
-    else:
+    if False in [char.isdigit()  for char in inputstring]:
         return False
+    else:
+        return True
 
-def differnce_dict(dict1, dict2):
-    set1 = set(dict1.items())
-    set2 = set(dict2.items())
-    return set1 - set2
 
 def findMobile(inputstring):
     pattern = re.compile(r"\d{10}")
@@ -25,20 +50,30 @@ def findMobile(inputstring):
     else:
         return []
 
+def findBigNumbers(inputstring):
+    pattern = re.compile(r"[1-9]\d{3,10}")
+    if re.search(pattern=pattern, string=inputstring) :
+        numbers = re.findall(pattern=pattern,string= inputstring)
+        numbers = [int(x) for x in numbers]
+        return numbers
+    else:
+        return []
+
 def find_match(SizeInput,size_matches):
     if size_matches[0] in SizeInput:
         return SizeInput
     sizelist = SizeInput.split(" ")
     matches = []
+    mul =1
     for i in sizelist:
-        i = i.strip()
-        if checkisdigit(i.strip(".\n")):
-            matches.append(i)
-        elif i in size_matches:
-            matches.append(i)
-    
+        if checkisdigit(i) and len(i) :
+            matches.append(float(i))
+        elif i in ["lk","lac","lakh","lak","lacs","lakhs"]:
+            mul = 100000
+        elif i in ["cr"]:
+            mul = 10000000
     if len(matches):
-        return " ".join(matches)
+        return matches[0]*mul
 
 
 def findOwner(input):
@@ -62,13 +97,16 @@ def cleaningLine(i):
         i= i.strip()
         i = i.rstrip(",.\n")
         i = i.lstrip("👉 ")
+        i = i.lstrip("👉🏻")
+        i = i.lstrip("*👉🏻")
+        i = i.lstrip("🏻☎☎☎☎")
         i = i.lstrip("*♦️")
         #print(i)
     for k in i:
-        fv = ["*",",","@","-"]
+        fv = ["*",",","@","-","=","\ud83d\udc49\ud83c\udffb"]
         if k in fv:
-            i = i.replace(k," ")
-        if "SQFT" in i.upper():
+            i = i.replace(k,"")
+        if "sqft" in i.lower():
             i = i.replace(":","")
     
     return i
@@ -77,7 +115,7 @@ def findHouse(input):
     pattern = re.compile(r"\d{1}[-\.\s\,][-\.\s\,]}\d{0,1}[-\.\s]??\D{8}|\d{1,6}\D{3,20}|\d{1,6}[,\.]\d{1,6}[,\.]\s{0,1}\D{1,10}|\d{1,6}[,\.]\s{0,1}\D{1,10}")
     #pattern = re.compile(r"|\d{3}[-\.\,\s]{2}??\D{4,5}")
     houselist = re.findall(pattern=pattern, string=input)
-    false_values = ["+", ":","PM]","AM]"]
+    false_values = ["+", ":","pm]","am]"]
     filterhouse = []
     for i in false_values:
         filterhouse = filterhouse + [ x for x in houselist if i  in x  ]
@@ -118,40 +156,55 @@ def removeX(input):
 
 def filterRooms(mydict):
     room_list = []
-    for j,i in enumerate(mydict["Rooms"]):
-        bhk_index = i.find("BHK")
+    for j,i in enumerate(mydict["number_of_bedrooms"]):
+        bhk_index = i.find("bhk")
         if bhk_index!= -1:
-            mydict["Rooms"][j]  = i[:bhk_index+3]
-            mydict["Rooms"][j].replace(" ","")
-            room_list.append(mydict["Rooms"][j])
+            mydict["number_of_bedrooms"][j]  = i[:bhk_index]
+            mydict["number_of_bedrooms"][j] = mydict["number_of_bedrooms"][j].replace(" ","")
+            room_list.append(int(mydict["number_of_bedrooms"][j]))
 
         else:
             size_matches = ["Sq. Yards" ,"sq yard","Sq yards","sq","carpet","ft","Sf","SFT","SB","SQFT","var", "Square","feet","vaar","VINGA"]
-            size_matches = [ x.upper() for x in size_matches ]
+            size_matches = [ x.lower() for x in size_matches ]
             price_matches = ["lk","Lac","lakh", "cr","lak","lacs"]
-            price_matches = [ x.upper() for x in price_matches ]
+            price_matches = [ x.lower() for x in price_matches ]
             
             
-            if any(x in mydict["Rooms"][j] for x in size_matches):
-                if "Size" in mydict.keys():
-                    mydict["Size"].append( find_match(mydict["Rooms"][j],size_matches))
+            if any(x in mydict["number_of_bedrooms"][j] for x in size_matches):
+                size_match = find_match(mydict["number_of_bedrooms"][j],size_matches)
+                if "floor_space" in mydict.keys():
+                    mydict["floor_space"].append(size_match)
                 else:
-                    mydict["Size"] = [ find_match(mydict["Rooms"][j],size_matches)]
+                    mydict["floor_space"] = [size_match]
         
-            elif any(x in mydict["Rooms"][j] for x in price_matches):
-                if "Budget" in mydict.keys():
-                    mydict["Budget"].append(find_match(mydict["Rooms"][j],price_matches))
+            elif any(x in mydict["number_of_bedrooms"][j] for x in price_matches):
+                if "budget" in mydict.keys():
+                    mydict["budget"].append(find_match(mydict["number_of_bedrooms"][j],price_matches))
                 else:
-                    mydict["Budget"] = [find_match(mydict["Rooms"][j],price_matches)]
+                    mydict["budget"] = [find_match(mydict["number_of_bedrooms"][j],price_matches)]
                 
             else:
-                if "Others" in mydict.keys():
-                    mydict["Others"].append(mydict["Rooms"][j])
+                if "others" in mydict.keys():
+                    mydict["others"].append(mydict["number_of_bedrooms"][j])
                 else:
-                    mydict["Others"] = [mydict["Rooms"][j]]
-                
-        
-    mydict["Rooms"] = room_list
+                    mydict["others"] = [mydict["number_of_bedrooms"][j]]
+    print("room_list",room_list)
+    mydict["number_of_bedrooms"] = room_list
+
+def filterOthers(mydict):
+    if "others" in mydict.keys():
+        for j,i in enumerate(mydict["others"]):
+            if findBigNumbers(mydict["others"][j]) :
+                if "budget" in mydict.keys():
+                    mydict["budget"] + findBigNumbers(mydict["others"][j])
+                else:
+                    mydict["budget"] = findBigNumbers(mydict["others"][j])
+            if findPropertyType(mydict["others"][j]):
+                if "estate_type" in mydict.keys():
+                    mydict["estate_type"] + findBigNumbers(mydict["others"][j])
+                else:
+                    mydict["estate_type"] = findBigNumbers(mydict["others"][j])
+
 
 def findSize(input):
     pattern = re.compile(r"\d{1,4}\s{0,1}[X,x,×]\s{0,1}\d{1,4}")
@@ -167,31 +220,37 @@ def findBudget(input):
     keywords=["lk","Lac","lakh", "cr"]
     inputlist = input.split(" ")
     typelist = []
-    keywords = [ x.upper() for x in keywords ]
+    keywords = [ x.lower() for x in keywords ]
     for i in keywords:
         if i in inputlist:
             typelist.append(i)
     return typelist
 
 def findType(input):
-    keywords=["PURCHASE","LENA","RENT", "SELL","KHARID","SALE"]
+    keywords=["purchase","rent","buy", "sell","sale"]
     inputlist = input.split(" ")
     typelist = []
     for i in keywords:
         if i in inputlist:
-            typelist.append(i)
+            if i in ["sale","sell"]:
+                typelist.append("sell")
+            elif i in ["purchase","buy"]:
+                typelist.append("buy")
+            else:
+                typelist.append(i)
     
     return typelist
 
 #societylist = apartment.objects.all()
-societylist = ["Royal Paradise","Keshav Narayan","Raj Harmoney","Grandza","Rayaltone","Sun Sine Residency","Anupam hieght","Dev bhoomi","Sns splendid","Hitek Avenue","Surya green view","Next orchied","Veer exotica","CAPITAL GREENS","ECO GARDEN","SANGINI","OFIRA RESIDENCY" ,"RAJHANS","Srungal Solitaire","Rajhans Royalton","utsav","meera","marvela","Aakash expression","SURYA PRAKASH RESIDENCY",
-"NISRAG AAPRMENT","RAJTILAK AAPRMENT","SURYA PLEASE","AARNAV APRMENT","SURYA DARSAN","KPM RESIDENCY","MURTI RESIDENCY","FALCAN AVENUE","AASHIRWAD PARK","GOLDEN AVENUE","PADMA KURTI","SHIMANDAR APPRMENT" ,"BAGVTI ASHISH" ,"MEGNA PARK","SHITAL PARK","NAVPAD AAPRMENT" ,"SURYA COMPLEX" ,"PALACIO","KESHAV NARAYNA","OPERA HOUSE","AARJAV AAPRMENT","MAAHI RESIDENCY","MAGH SHARMAND","SAKAR RESIDENCY","MURLIDHAR","SANGINI RESIDENCY"]
+# societylist = ["Royal Paradise","Keshav Narayan","Raj Harmoney","Grandza","Rayaltone","Sun Sine Residency","Anupam hieght","Dev bhoomi","Sns splendid","Hitek Avenue","Surya green view","Next orchied","Veer exotica","CAPITAL GREENS","ECO GARDEN","SANGINI","OFIRA RESIDENCY" ,"RAJHANS","Srungal Solitaire","Rajhans Royalton","utsav","meera","marvela","Aakash expression","SURYA PRAKASH RESIDENCY",
+# "NISRAG AAPRMENT","RAJTILAK AAPRMENT","SURYA PLEASE","AARNAV APRMENT","SURYA DARSAN","KPM RESIDENCY","MURTI RESIDENCY","FALCAN AVENUE","AASHIRWAD PARK","GOLDEN AVENUE","PADMA KURTI","SHIMANDAR APPRMENT" ,"BAGVTI ASHISH" ,"MEGNA PARK","SHITAL PARK","NAVPAD AAPRMENT" ,"SURYA COMPLEX" ,"PALACIO","KESHAV NARAYNA","OPERA HOUSE","AARJAV AAPRMENT","MAAHI RESIDENCY","MAGH SHARMAND","SAKAR RESIDENCY","MURLIDHAR","SANGINI RESIDENCY"]
+rf =  findOptimized(required_fields,mapping_db)
+societylist = rf["apartment"]
 
 
 def findArea(input):
-    keywords=["VESU","CITYLIGHT","PIPILOD", "NEW CITYLIGHT ROAD","PARLE POINT","Ghod Dod","Bhatar Road","v I P road","vIP road","ring road","palanpur","palgam","new city light","Mansarovar","PARVAT PATIA","GODADARA","althan","CITy light","Pandesara GIDC","adajan","Ghod Dhod Road","vackanja","Pal","Athwalines","Udhana","Kadodara","Udhna"]
     inputlist = input.split(" ")
-    keywords = [ x.upper() for x in keywords ]
+    keywords = [ x.lower() for x in rf["area"] ]
     typelist = []
     for i in keywords:
         if i in inputlist or i in input:
@@ -202,9 +261,10 @@ def findArea(input):
 
 def findSociety(input):
     inputlist = input.split(" ")
-    keywords = [ x.upper() for x in societylist ]
+    keywords = [ x.lower() for x in rf["apartment"] ]
     typelist = []
     for i in keywords:
+        # so = fuzz.ratio(i,inputlist)
         if i in inputlist or i in input:
             typelist.append(i)
     
@@ -214,7 +274,7 @@ def findFurntiure(input):
     keywords=["WITH FULL FURNITURE", "Fully Furnished","Semi Furnished","luxurious furnished","furnished","Renovated"]
     inputlist = input.split(" ")
     typelist = []
-    keywords = [ x.upper() for x in keywords ]
+    keywords = [ x.lower() for x in keywords ]
     for i in keywords:
         if i in inputlist or i in input:
             typelist.append(i)
@@ -222,11 +282,21 @@ def findFurntiure(input):
     return typelist
 
 def findPropertyType(input):
-    keywords=["Flat","plot","shop","rowhouse","Ro-House","Bunglows","office","Bunglow","ROW HOUSE","Bungalow","Banglow","Shed","Lend","Godown","warehouse","land","House"]
     inputlist = input.split(" ")
     #print(inputlist)
     typelist = []
-    keywords = [ x.upper() for x in keywords ]
+    keywords = [ x.lower() for x in rf["property_type"] ] +["office"]
+    for i in keywords:
+        if i in inputlist or i in input:
+            typelist.append(i)
+            break
+    return typelist 
+
+def findRentKeyword(input):
+    inputlist = input.split(" ")
+    #print(inputlist)
+    typelist = []
+    keywords = [ "available","required"]
     for i in keywords:
         if i in inputlist or i in input:
             typelist.append(i)
@@ -242,10 +312,10 @@ def findALlRequiremnts(lines,start_index):
         #print(prevHouse,j,start_index,i)
         if findOwner(i) and j != 0:
             #myDict[prevHouse]["Newquery"] = "true"
-            return myDict, start_index+j
+            return myDict[prevHouse], start_index+j
         else:
-            i= cleaningLine(i).upper() 
-            #print(len(findArea(i)) , len(findType(i)) , findHouse(i) ,len(findPropertyType(i)), findSociety(i))
+            i= cleaningLine(i).lower() 
+            #print(len(findArea(i)) , len(findType(i)) , find_house ,len(findPropertyType(i)), findSociety(i))
             if i == "\n":
                 #print("blank")
                 prevHouse = start_index+j
@@ -253,158 +323,194 @@ def findALlRequiremnts(lines,start_index):
                     
 
             else:
-                if len(findArea(i)) or  len(findType(i)) or len(findHouse(i)) or len(findPropertyType(i)) or len(findSociety(i)) or len(findMobile(i)) :
-                    if len(findHouse(i)):
-                        if "Rooms" in myDict[prevHouse].keys():
-                            myDict[prevHouse]["Rooms"] = myDict[prevHouse]["Rooms"]+ list(findHouse(i))
-                        else:
-                            myDict[prevHouse]["Rooms"] = list(findHouse(i))
-                    if "Area" in myDict[prevHouse].keys():
-                        myDict[prevHouse]["Area"] = myDict[prevHouse]["Area"]+findArea(i)
-                    elif len(findArea(i)):
-                        myDict[prevHouse]["Area"] = findArea(i)
-                    
-                    if "Type" in myDict[prevHouse].keys():
-                        myDict[prevHouse]["Type"] = myDict[prevHouse]["Type"]+findType(i)
-                    elif len(findType(i)):
-                        myDict[prevHouse]["Type"] = findType(i)
-                    
-                    if "Society" in myDict[prevHouse].keys():
-                        myDict[prevHouse]["Society"] = myDict[prevHouse]["Society"]+findSociety(i)
-                    elif len(findSociety(i)):
-                        myDict[prevHouse]["Society"] = findSociety(i)
+                find_area = findArea(i)
+                find_type = findType(i)
+                find_house = findHouse(i)
+                print(find_house)
+                find_property_type = findPropertyType(i)
+                find_society = findSociety(i)
+                find_mobile = findMobile(i)
+                find_size = findSize(i)
+                find_furniture = findFurntiure(i)
+                find_rent_keyword = findRentKeyword(i)
 
-                    if "PropertyType" in myDict[prevHouse].keys():
-                        myDict[prevHouse]["PropertyType"] = myDict[prevHouse]["PropertyType"]+findPropertyType(i)
-                    elif len(findPropertyType(i)):
-                        myDict[prevHouse]["PropertyType"] = findPropertyType(i)
+                if len(find_area) or  len(find_type) or len(find_house) or len(find_property_type) or len(find_society) or len(find_mobile) :
+                    if len(find_house):
+                        if "number_of_bedrooms" in myDict[prevHouse].keys():
+                            myDict[prevHouse]["number_of_bedrooms"] = myDict[prevHouse]["number_of_bedrooms"]+ list(find_house)
+                        else:
+                            myDict[prevHouse]["number_of_bedrooms"] = list(find_house)
+                    if "area" in myDict[prevHouse].keys():
+                        myDict[prevHouse]["area"] = myDict[prevHouse]["area"]+find_area
+                    elif len(find_area):
+                        myDict[prevHouse]["area"] = find_area
                     
-                    if "Mobile" in myDict[prevHouse].keys():
-                        myDict[prevHouse]["Mobile"] = myDict[prevHouse]["Mobile"]+findMobile(i)
-                    elif len(findMobile(i)):
-                        myDict[prevHouse]["Mobile"] = findMobile(i)
+                    if "estate_status" in myDict[prevHouse].keys():
+                        myDict[prevHouse]["estate_status"] = myDict[prevHouse]["estate_status"]+find_type
+                    elif len(find_type):
+                        myDict[prevHouse]["estate_status"] = find_type
+                    
+                    if "apartment" in myDict[prevHouse].keys():
+                        myDict[prevHouse]["apartment"] = myDict[prevHouse]["apartment"]+find_society
+                    elif len(find_society):
+                        myDict[prevHouse]["apartment"] = find_society
+
+                    if "estate_type" in myDict[prevHouse].keys():
+                        myDict[prevHouse]["estate_type"] = myDict[prevHouse]["estate_type"]+find_property_type
+                    elif len(find_property_type):
+                        myDict[prevHouse]["estate_type"] = find_property_type
+                    
+                    if "rent_status" in myDict[prevHouse].keys():
+                        myDict[prevHouse]["rent_status"] = myDict[prevHouse]["rent_status"]+find_rent_keyword
+                    elif len(find_rent_keyword):
+                        myDict[prevHouse]["rent_status"] = find_rent_keyword
+                    
+                    if "broker_mobile" in myDict[prevHouse].keys():
+                        myDict[prevHouse]["broker_mobile"] = myDict[prevHouse]["broker_mobile"]+find_mobile
+                    elif len(find_mobile):
+                        myDict[prevHouse]["broker_mobile"] = find_mobile
                         myDict[prevHouse]["endquery"] = "true"
                     
-                    if len(findSize(i)):
-                        if "Size" in myDict[prevHouse].keys():
-                            myDict[prevHouse]["Size"] = myDict[prevHouse]["Size"]+ list(findSize(i))
+                    if len(find_size):
+                        if "floor_space" in myDict[prevHouse].keys():
+                            myDict[prevHouse]["floor_space"] = myDict[prevHouse]["floor_space"]+ list(find_size)
                         else:
-                            myDict[prevHouse]["Size"] = list(findSize(i))
+                            myDict[prevHouse]["floor_space"] = list(find_size)
 
-                    if len(findFurntiure(i)):
-                        myDict[prevHouse]["Furniture"] = findFurntiure(i)
+                    if len(find_furniture):
+                        myDict[prevHouse]["furniture"] = find_furniture
                 else:
-                    if "Others" in myDict[prevHouse].keys():
-                        myDict[prevHouse]["Others"].append(i)
+                    if "others" in myDict[prevHouse].keys():
+                        myDict[prevHouse]["others"].append(i)
                     else:
-                        myDict[prevHouse]["Others"] = [i]
-    return myDict, start_index+j
+                        myDict[prevHouse]["others"] = [i]
+    return myDict[prevHouse], start_index+j
 
 def filterSize(mydict):
-
-    if "Rooms" in mydict.keys():
-        mydict["Rooms"] = [ x.upper() for x in mydict["Rooms"] ]
+    if "number_of_bedrooms" in mydict.keys():
+        mydict["number_of_bedrooms"] = [ x.lower() for x in mydict["number_of_bedrooms"] ]
         filterRooms(mydict)
+    if "others" in mydict.keys():
+        filterOthers(mydict)
+    return mydict
+    
 
 
-def get_data_from_msg(string):
+def get_data_from_msg(string,mobile,multi= False):
 
-    lines  = string.split("\n")
-    start_index =0
-    end_index = 0
+    print(string)
+    # estate_parameters = ["estate_type","estate_status","area","number_of_bedrooms","budget","apartment","floor_space","furniture"]
+    estate_parameters = ["estate_type","estate_status","area"]
+    lines  = [line for line in string.split("\n") if line.strip() != '']
     i=0
-    owner = "93280 59281"
+    owner = mobile
     new_dic = dict()
+    json_index = []
+    estate_list =[]
+    estate = {}
+    pre_estate = {}
     while i < len(lines):
-        json_index = findALlRequiremnts(lines,i)
-        print("json_index",json_index)
-        print(i)
-        if findOwner(lines[i])[0]:
-            owner = findOwner(lines[i])[1]
-            print("owner",owner)
-            json_index[0][list(json_index[0].keys())[0]]["Newquery"] = {"found":"true"}
-            if owner not in new_dic.keys():
-                new_dic[owner] = [json_index[0]]
-            else:
-                new_dic[owner].append(json_index[0])
-            end_index = json_index[1]
-            if i!= end_index:
-                i = end_index
-            else:
-                i=i+1
-        elif lines[i] == "\n":
+        if lines[i] == "\n":
             i=i+1
         else:
-            new_dic[owner].append(json_index[0])
-            i =i+1
+            json_index = findALlRequiremnts(lines,i)
+            print(estate,i)
 
-    #print("new_dic",new_dic)
-    jsonlist = dict()
-
-    prev_json = dict()
-    for i in new_dic.keys():
-        for j in  range(0, len(new_dic[i])):
-            #print(new_dic[i][j])
-            for k in new_dic[i][j].keys():
-                filterSize(new_dic[i][j][k])
-                present_json = new_dic[i][j][k]
-                print("present_json",present_json)
-                if "Newquery" in present_json.keys() and "endquery" not in present_json.keys():
-                    prev_json = present_json
-
-                if "endquery" in prev_json.keys():
-                    prev_json = present_json
-
-                if len(prev_json.keys()) and prev_json != present_json:
-                    for key in prev_json.keys():
-                        if not key in new_dic[i][j][k]:
-                            if key in ["Type","PropertyType","Mobile","Budget","Society","Others"]:
-                                new_dic[i][j][k][key] = prev_json[key]
-                            elif key == "Size" and (("Rooms" not in prev_json.keys()  or len(prev_json["Rooms"]) == 0 ) or ("Rooms"  in present_json.keys()  and len(present_json["Rooms"]) == 0 )or "Rooms" not in present_json.keys() ):
-                                new_dic[i][j][k][key] = prev_json[key]
-
-                            elif key == "Area" and (("PropertyType" in prev_json.keys() or "PropertyType" in present_json.keys() ) or ("Newquery" in prev_json.keys()) or len(prev_json.keys())==1):
-                                new_dic[i][j][k][key] = prev_json[key]
-
-                            elif key in ["Rooms","Furniture"] and (("PropertyType" in present_json.keys() and present_json["PropertyType"][0] not in ["PLOT"]) or ("PropertyType" not in present_json.keys()) ):
-                                new_dic[i][j][k][key] = prev_json[key]
-                        
-                        else:
-                            if prev_json[key] != present_json[key]:
-                                new_dic[i][j][k][key] = list(set(prev_json[key]+present_json[key]))
+            if set(estate_parameters).issubset(set(list(estate.keys()))):
+                if "apartment" not in estate.keys():
+                    estate["apartment"] = "any"
+                if "number_of_bedrooms" not in estate.keys():
+                    estate["number_of_bedrooms"] = 0
+                if "floor_space" not in estate.keys():
+                    estate["floor_space"] = 0
+                if "budget" not in estate.keys():
+                    estate["budget"] = 0
+                print(2)
+                estate_list.append(estate)
+                estate = filterSize(json_index[0])
+            # elif set(estate_parameters).issubset(set(list(pre_estate.keys()))):
+            #     if "apartment" not in pre_estate.keys():
+            #         pre_estate["apartment"] = "any"
+            #     if "number_of_bedrooms" not in pre_estate.keys():
+            #         pre_estate["number_of_bedrooms"] = 0
                 
-                
-                
-                prev_json  = new_dic[i][j][k]
-                print("prev_json",prev_json)
-                if i in jsonlist.keys():
-                    jsonlist[i].append(prev_json)
-                else:
-                    jsonlist[i] = [prev_json]
+            #     if "floor_space" not in pre_estate.keys():
+            #         pre_estate["floor_space"] = 0
 
-    print(jsonlist)
-    validlist = dict()
-    for key in jsonlist.keys():
-        for i,jobject in enumerate(jsonlist[key]):
-            if "endquery" in jobject.keys():
-                if "Mobile" in jsonlist[key][i-1].keys():
-                        jsonlist[key][i-1]["Mobile"] = jsonlist[key][i-1]["Mobile"] + jsonlist[key][i]["Mobile"]
-                else:
-                    jsonlist[key][i-1]["Mobile"] = jsonlist[key][i]["Mobile"]
-                if key in validlist.keys():
-                    validlist[key].append(jsonlist[key][i-1])
-                else:
-                    validlist[key] = [jsonlist[key][i-1]]
-            
+            #     print(1)
+            #     estate_list.append(pre_estate)
+            #     pre_estate ={}
+            # elif list(estate.keys()) and list(pre_estate.keys()):
+            #     print(3)
+            #     if set(list(pre_estate.keys())).issubset(set(list(estate.keys()))) or  set(list(estate.keys())).issubset(set(list(pre_estate.keys()))):
+            #         if "apartment" not in pre_estate.keys():
+            #             pre_estate["apartment"] = "any"
+            #         if "number_of_bedrooms" not in pre_estate.keys():
+            #             pre_estate["number_of_bedrooms"] = 0
+                    
+            #         if "floor_space" not in pre_estate.keys():
+            #             pre_estate["floor_space"] = 0
 
+            #         estate_list.append(pre_estate)
+            #         pre_estate ={}
+                    
+            #     pre_estate.update(estate)
+            #     estate = filterSize(json_index[0])
+            #     estate.update(json_data)
+            else:
+                # print(4)
+                json_data = filterSize(json_index[0])
+                estate.update(json_data)
+        i = i+1
+    if not estate_list:
+        print("here")
+        return False
+        # if "apartment" not in estate.keys():
+        #     estate["apartment"] = "any"
+        # if "number_of_bedrooms" not in estate.keys():
+        #     estate["number_of_bedrooms"] = 0
+        # if "floor_space" not in estate.keys():
+        #     estate["floor_space"] = 0
+        # if "budget" not in estate.keys():
+        #     estate["budget"] = 0
+        # estate["broker_mobile"] = mobile
+        # estate_list.append(estate)
 
-
-    json_object = json.dumps(validlist, sort_keys=True, indent = 4) 
-    
+    json_object = json.dumps(estate_list, sort_keys=True, indent = 4) 
     with open("samplequery2.json", "w") as outfile:
         outfile.write(json_object)
+    new_list =[]
+    if multi:
+        for data in estate_list:
+            new_data ={}
+            for key in data:
+                if isinstance(data[key],list) and data[key]:
+                    new_data[key] = data[key][0]
+                else:
+                    new_data[key] = data[key]
+            new_data["society"] = new_data["apartment"]
+            if "rent_status" in new_data and new_data["estate_status"] in ["sell","buy"]:
+                new_data.pop("rent_status")
+            if "others" in new_data:
+                new_data.pop("others")
+            if "endquery" in new_data:
+                new_data.pop("endquery")
+            if "number_of_bedrooms" in new_data:
+                if not new_data["number_of_bedrooms"]:
+                    new_data["number_of_bedrooms"] =0
 
-    return validlist
+            new_data["city"] ="surat"
+            new_data["broker_name"] = mobile
+            new_data.pop("apartment")
+            new_data["broker_mobile"] = mobile
+
+            print
+            new_list.append(new_data)
+
+            estate = Estate.objects.create(**new_data)
+    if multi:
+        return new_list
+    return estate_list[0]
 
 #print(jsonlist)
 

@@ -1,8 +1,6 @@
-from ast import Try
 from django.db import models
 from cloudinary.models import CloudinaryField
 from django.core.validators import RegexValidator
-
 
 
 
@@ -45,7 +43,16 @@ class Apartment(models.Model):
         #db_table = 'area'
 
 
-
+class EnquiryQuerys(models.Model):
+    broker_number = models.CharField(max_length=10)
+    mobile_number = models.CharField(max_length=10)
+    type = models.CharField(max_length=128)
+    estate_type = models.CharField(max_length=128)
+    budget = models.CharField(max_length=128)
+    area = models.CharField(max_length=128)
+    class Meta:
+        managed = True
+        #db_table = 'area'
 
 
 
@@ -87,30 +94,45 @@ class Contact(models.Model):
 
 class Estate(models.Model):
     #id =  models.AutoField(primary_key = True)
-    estate_name = models.CharField(max_length=255)
+    estate_name = models.CharField(max_length=255,blank=True,default="")
     city = models.CharField(max_length=128, default= "")
     estate_type = models.CharField(max_length=128, default= "")
+    furniture = models.CharField(max_length=128, default= "",blank=True)
     floor_space = models.DecimalField(max_digits=8, decimal_places=2, blank=True)
     number_of_balconies = models.IntegerField(blank=True)
     balconies_space = models.DecimalField(max_digits=8, decimal_places=2, blank=True)
-    number_of_bedrooms = models.IntegerField(blank=True)
+    number_of_bedrooms = models.IntegerField(blank=True,default=0)
     number_of_bathrooms = models.IntegerField(blank=True)
     number_of_garages = models.IntegerField(blank=True)
     number_of_parking_spaces = models.IntegerField(blank=True)
     pets_allowed = models.IntegerField(blank=True)
-    estate_description = models.TextField()  # This field type is a guess.
+    estate_description = models.TextField(blank=True)  # This field type is a guess.
     estate_status = models.CharField(max_length=128, default= "")
+    rent_status = models.CharField(max_length=128, default= "",blank=True)
     is_deleted = models.BooleanField(default=False)
     society = models.CharField(max_length=128, default= "")
     area = models.CharField(max_length=128, default= "")
-    broker_mobile = models.CharField(max_length=128, default= "")
-    broker_name = models.CharField(max_length=128, default= "")
-    budget = models.IntegerField(blank=True)
+    broker_mobile = models.CharField(blank=True,max_length=128, default= "")
+    broker_name = models.CharField(blank=True,max_length=128, default= "")
+    budget = models.IntegerField(blank=True,default=0)
 
     class Meta:
         managed = True
+        unique_together = (('estate_type', 'estate_status',"area","society","rent_status"),)
 
-
+    def get_estate_name(self):
+        if self.floor_space and self.number_of_bedrooms:
+            self.estate_name = f"{self.estate_type} {self.estate_status} {self.number_of_bedrooms}bhk {self.floor_space}sqft {self.area} {self.society}"
+            return f"{self.estate_type} {self.estate_status} {self.number_of_bedrooms}bhk {self.floor_space}sqft {self.area} {self.society}"
+        elif self.floor_space:
+            self.estate_name =  f"{self.estate_type} {self.estate_status} {self.floor_space}sqft {self.area} {self.society}"
+            return f"{self.estate_type} {self.estate_status} {self.floor_space}sqft {self.area} {self.society}"
+        elif self.number_of_bedrooms:
+            self.estate_name =  f"{self.estate_type} {self.estate_status} {self.number_of_bedrooms}bhk {self.area} {self.society}"
+            return f"{self.estate_type} {self.estate_status} {self.number_of_bedrooms}bhk {self.area} {self.society}"
+        else:
+            self.estate_name =  f"{self.estate_type} {self.estate_status}  {self.area} {self.society}"
+            return f"{self.estate_type} {self.estate_status}  {self.area} {self.society}"
 
 class EstateStatus(models.Model):
     #id =  models.AutoField(primary_key = True)
@@ -173,7 +195,9 @@ class Broker(models.Model):
     name = models.CharField(max_length=64)
     phone_regex = RegexValidator(regex=r'^\d{10}$', message="Phone number must be entered in the format: '999999999'. 10 digit mobile number.")
     mobile = models.CharField(validators=[phone_regex], max_length=17, blank=True , unique= True) # validators should be a list
-    balance = models.IntegerField(default=0)
+    area = models.CharField(max_length=200)
+    estate_type = models.CharField(max_length=200)
     class Meta:
         managed = True
-
+    def __str__(self):
+        return  self.name

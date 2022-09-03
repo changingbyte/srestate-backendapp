@@ -1,5 +1,5 @@
 from django.contrib.auth import get_user_model, logout
-from UserManagement.models import BrokersUsers
+from UserManagement.models import User
 from django.views.decorators.csrf import csrf_exempt
 from django.core.exceptions import ImproperlyConfigured
 from rest_framework import viewsets, status
@@ -7,7 +7,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.decorators import api_view ,authentication_classes, permission_classes
-
+from property.location.location_views import db
 from rest_framework.renderers import JSONRenderer
 from UserManagement.utils import get_and_authenticate_user, create_user_account
 from UserManagement import serializers as sz
@@ -17,7 +17,7 @@ from django.core import serializers
 # assuming obj is a model instance
 
 
-User = BrokersUsers()
+User = User()
 
 
 @api_view(('POST',))
@@ -41,23 +41,21 @@ def validate_mobile(request):
 
 
 
-
-
-# @api_view(('POST',))
-# @csrf_exempt
-# def validate_otp(request):
-#     print(request)
-#     serializer = serializers.AuthBrokersUserserializer(data=request.data)
-#     print(serializer)
-#     if serializer.is_valid(raise_exception=True):
-#         user = get_and_authenticate_user(**serializer.validated_data)
-#         data = serializers.AuthBrokersUserserializer().get_auth_token.data
-#         if user:
-#             return Response(data=data, status=status.HTTP_201_CREATED)
-#         else:
-#             return Response(data=data, status=status.HTTP_200_OK)
-#     else:
-#         return Response(data=data, status=status.HTTP_400_BAD_REQUEST)
+@api_view(('POST',))
+@csrf_exempt
+def validate_otp(request):
+    print(request)
+    serializer = serializers.AuthBrokersUserserializer(data=request.data)
+    print(serializer)
+    if serializer.is_valid(raise_exception=True):
+        user = get_and_authenticate_user(**serializer.validated_data)
+        data = serializers.AuthBrokersUserserializer().get_auth_token.data
+        if user:
+            return Response(data=data, status=status.HTTP_201_CREATED)
+        else:
+            return Response(data=data, status=status.HTTP_200_OK)
+    else:
+        return Response(data=data, status=status.HTTP_400_BAD_REQUEST)
 
 
     

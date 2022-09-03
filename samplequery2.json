@@ -1,160 +1,23 @@
-{
-    "7984699363": [
-        {
-            "Mobile": [
-                "7984699363",
-                "7984699363"
-            ],
-            "Newquery": {
-                "found": "true"
-            },
-            "Others": [
-                ""
-            ],
-            "endquery": "true"
-        },
-        {
-            "Mobile": [
-                "7984699363",
-                "7984699363"
-            ],
-            "Newquery": {
-                "found": "true"
-            },
-            "Others": [
-                ""
-            ],
-            "endquery": "true"
-        },
-        {
-            "Mobile": [
-                "7984699363",
-                "7984699363"
-            ],
-            "Others": [
-                ""
-            ]
-        }
-    ],
-    "8460280059": [
-        {
-            "Mobile": [
-                "8460280059"
-            ],
-            "Others": [
-                "",
-                "SORROUNDING SURAT",
-                "2Z PROPERTY SOLUTION",
-                "FOR PAPER FACTORY",
-                "ANY HAVE CALL"
-            ],
-            "PropertyType": [
-                "LAND"
-            ],
-            "Rooms": [],
-            "Size": [
-                "6 VINGA"
-            ],
-            "Type": [
-                "PURCHASE"
-            ]
-        }
-    ],
-    "9824739341": [
-        {
-            "Area": [
-                "UDHANA"
-            ],
-            "Budget": [
-                "3.50.LAKH"
-            ],
-            "Mobile": [
-                "9824739341"
-            ],
-            "Others": [
-                "",
-                "BROKERAGE SIDE BY SIDE ",
-                "115 = ",
-                "COLL AND MESSAGE PERSONALLY ",
-                "19 ",
-                "DILIP JARIWALA ",
-                "63 \u00d7 ",
-                "51 \u00d7 ",
-                "SHREE MAHALAXMI REAL ESTATE "
-            ],
-            "PropertyType": [
-                "GODOWN",
-                "SHED"
-            ],
-            "Rooms": [],
-            "Size": [
-                5865,
-                "7245.SQFT",
-                7245,
-                "13110. SQFT",
-                "5865.SQFT"
-            ],
-            "Type": [
-                "RENT"
-            ]
-        },
-        {
-            "Area": [
-                "KADODARA"
-            ],
-            "Mobile": [
-                "9824739341"
-            ],
-            "Others": [
-                "",
-                "BROKERAGE SIDE BY SIDE",
-                "TATITHIYA",
-                "COLL AND MESSAGE PERSONALLY",
-                "DASTAN RAILWAY FATAK",
-                "DILIP JARIWALA ",
-                "SHREE MAHALAXMI REAL ESTATE "
-            ],
-            "PropertyType": [
-                "LEND"
-            ],
-            "Rooms": [],
-            "Size": [
-                "3200. SQ. YARDS",
-                "9000.SQ. YARDS",
-                "9000. SQ",
-                "12000. SQ. YARDS"
-            ],
-            "Type": [
-                "SALE"
-            ]
-        },
-        {
-            "Mobile": [
-                "9824739341"
-            ],
-            "Others": [
-                "",
-                "BEST FOR ",
-                "BROKERAGE SIDE BY SIDE ",
-                "PRICE. ",
-                "COLL AND MESSAGE PERSONALLY ",
-                "DILIP JARIWALA ",
-                "1 CONTRACTION ",
-                "90 SIZE ",
-                "SHREE MAHALAXMI REAL ESTATE "
-            ],
-            "PropertyType": [
-                "HOUSE",
-                "SHED"
-            ],
-            "Rooms": [],
-            "Size": [
-                5400,
-                "600 VAR"
-            ],
-            "Type": [
-                "SELL"
-            ]
-        }
-    ]
-}
+[
+    {
+        "apartment": "any",
+        "broker_mobile": "9426469653",
+        "budget": [
+            5200000.0
+        ],
+        "estate_status": [
+            "buy"
+        ],
+        "estate_type": [
+            "flat"
+        ],
+        "floor_space": 0,
+        "furniture": [
+            "fully furnished"
+        ],
+        "number_of_bedrooms": [],
+        "others": [
+            "garden facing"
+        ]
+    }
+]

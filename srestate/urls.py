@@ -21,6 +21,8 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v1/property/', include('property.urls')),
     path('users/', include('UserManagement.urls')),
+    path('chats/', include('chat.urls')),
+
 ]
 
 urlpatterns += staticfiles_urlpatterns()

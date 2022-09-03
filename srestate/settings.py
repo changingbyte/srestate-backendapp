@@ -15,10 +15,10 @@ import cloudinary
 import cloudinary.uploader
 import cloudinary.api
 import urllib
-
+from .configenv import CONFIG_DB
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
+ENV = os.environ.get('ENV',"local")
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.0/howto/deployment/checklist/
@@ -29,12 +29,13 @@ SECRET_KEY = 'os*+e_tp3#-yj#5lr^da=2%4!omhenb%$@-emahbe63+qjpa-m'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["srestateapi.herokuapp.com","127.0.0.1"]
+ALLOWED_HOSTS = ["srestate-dev-app-9z8ml.ondigitalocean.app","srestateapi.herokuapp.com","127.0.0.1","c2bd-2405-201-2018-daac-fbf4-be0e-75a-79a2.in.ngrok.io"]
 
 
 # Application definition
 
 INSTALLED_APPS = [
+    'UserManagement',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -45,7 +46,8 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'rest_framework',
     'cloudinary',
-    'UserManagement'
+    'chat',
+    'django_celery_beat', 
 ]
 
 MIDDLEWARE = [
@@ -83,9 +85,11 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.TokenAuthentication',
     ],
-'DEFAULT_PERMISSION_CLASSES': [
-    'rest_framework.permissions.IsAuthenticated',
-]
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 100,
 }
 
 
@@ -94,30 +98,23 @@ REST_FRAMEWORK = {
 
 
 
-CACHES = {
-    'default': {
-        "host":"redis-14152.c264.ap-south-1-1.ec2.cloud.redislabs.com",
-        "port":"14152",
-        "password":"93mHkCGxkxM0Wj2yjcO8bxkhlECCOCis"
-    }
-}
+
+
+# mongo_uri = "mongodb://srestatedev1:"+str(urllib.parse.quote("changingbyte123$"))+"@docdb-2022-05-17-05-48-47.cluster-cckiz4syulr1.us-west-2.docdb.amazonaws.com:27017/?ssl=true&replicaSet=rs0&readPreference=secondaryPreferred&retryWrites=false"
+
+
+DATABASE_ROUTERS = ['chat.routers.chatRouter','UserManagement.routers.UserManagementRouter','property.routers.propertyRouter']
 
 mongo_uri =  'mongodb+srv://srestateapi:' + str(urllib.parse.quote("changingbyte@123"))  +'@cluster0.0zdkv.mongodb.net/myFirstDatabase?retryWrites=true&w=majority'
 
-DATABASES = {
-        'default': {
-            'ENGINE': 'djongo',
-            'NAME': 'your-db-name',
-            'ENFORCE_SCHEMA': False,
-            'CLIENT': {
-                'host': mongo_uri
-            }  
-        }
-}
-
+DATABASES = CONFIG_DB.get(ENV)
 AUTH_USER_MODEL = "UserManagement.User" 
-TWILIO_ACCOUNT_SID = "ACdd809e6c2f3029ea93a26bb07f67448c"
-TWILIO_AUTH_TOKEN = "e3bf6a69c745c66487a995e6772a09ff"
+TWILIO_ACCOUNT_SID = "ACddd7e4be77b766c76196481b7f0bf1b2"
+TWILIO_AUTH_TOKEN = "f1da223e04146a71272479c03c52d254"
+
+import dj_database_url
+db_from_env = dj_database_url.config(conn_max_age=600)
+DATABASES['messagedb'].update(db_from_env)
 
 # Internationalization
 # https://docs.djangoproject.com/en/3.0/topics/i18n/
@@ -133,17 +130,59 @@ USE_L10N = True
 USE_TZ = True
 
 
+#celery Broker
+
+from celery.schedules import crontab   
+CELERY_BROKER_URL = 'redis://default:93mHkCGxkxM0Wj2yjcO8bxkhlECCOCis@redis-14152.c264.ap-south-1-1.ec2.cloud.redislabs.com:14152/0' 
+CELERY_TIMEZONE = 'Asia/Kolkata'   
+# # Let's make things happen 
+# CELERY_BEAT_SCHEDULE = {
+#  'send-summary-every-hour': {
+#        'task': 'summary',
+#         # There are 4 ways we can handle time, read further 
+#        'schedule': 60.0,
+#         # If you're using any arguments
+#     },
+#     # Executes every Friday at 4pm
+#     'send-notification-on-friday-afternoon': { 
+#          'task': 'chat.tasks.send_notification', 
+#          'schedule': crontab(hour=16, day_of_week=5),
+#         },          
+# }
 
 # adding config
 cloudinary.config(
   cloud_name = "dsk7rqudu",
-  api_key = "676392571798224",
+  api_key = "qwertui",
   api_secret = "0-Vtu1ua0Rl3woq6S4PwTeBM2Wo"
 )
 
+ASGI_APPLICATION = "srestate.asgi.application"
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [('127.0.0.1', 6379)],
+        },
+    },
+}
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.0/howto/static-files/
 
 STATIC_URL = '/static/'
+
+# Additional locations of static files
+STATICFILES_DIRS = (
+    # Put strings here, like "/home/html/static" or "C:/www/django/static".
+    # Always use forward slashes, even on Windows.
+    # Don't forget to use absolute paths, not relative paths.
+    os.path.join(BASE_DIR, "static"),
+)
+
+STATICFILES_FINDERS = (
+    'django.contrib.staticfiles.finders.FileSystemFinder',
+    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
+#    'django.contrib.staticfiles.finders.DefaultStorageFinder',
+)
 

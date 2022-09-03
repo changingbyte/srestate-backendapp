@@ -2,6 +2,7 @@ import imp
 
 from marshmallow import ValidationError
 from UserManagement.models import BrokersUsers ,User
+from property.models import Broker
 from rest_framework.authtoken.models import Token
 from rest_framework import serializers
 from django.contrib.auth.models import BaseUserManager
@@ -9,7 +10,7 @@ from django.contrib.auth.models import BaseUserManager
 
 class UserLoginSerializer(serializers.Serializer):
     Mobile = serializers.CharField(max_length = 10)
-
+    appString = serializers.CharField(max_length = 50)
     def validate_Mobile(self,value):
         if len(value) != 10:
             raise serializers.ValidationError("mobile length error")
@@ -18,11 +19,11 @@ class UserLoginSerializer(serializers.Serializer):
 
 class AuthBrokersUserserializer(serializers.ModelSerializer):
     auth_token = serializers.SerializerMethodField()
-    otp = serializers.SerializerMethodField()
+    name = serializers.SerializerMethodField()
 
     class Meta:
          model = User
-         fields = ('mobile','auth_token','otp')
+         fields = ('name','mobile','auth_token','otp','is_premium','is_profile_completed')
     
     def get_auth_token(self, obj):
         token = Token.objects.get_or_create(user=obj)
@@ -30,9 +31,14 @@ class AuthBrokersUserserializer(serializers.ModelSerializer):
         print(token[0])
         return token[0].key
 
-    def get_otp(self,obj):
-        brokeruser = BrokersUsers.objects.get(Mobile = obj.mobile)
-        return brokeruser.otp
+    def get_name(self,obj):
+        try:
+            brokeruser = Broker.objects.get(mobile = obj.mobile)
+            return brokeruser.name
+        except Broker.DoesNotExist:
+            return None
+        
+
 
 
 

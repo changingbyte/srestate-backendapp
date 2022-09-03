@@ -13,9 +13,11 @@ urlpatterns = [
     path("area/delete/<int:pk>/",views.DeleteAreaAPIView.as_view(),name="delete_area"),
 	path("apartment/",views.ListApartmentAPIView.as_view(),		  		  name="apartment_list"),
     path("broker/create/", views.CreateBrokerAPIView.as_view(),		  name="broker_create"),
+    path("brokerDetails/",views.get_broker_profile, name="broker_detail"),
     path("get_balance/", views.get_balance,name="broker_balance"),
     path("apartment/create/", views.CreateApartmentAPIView.as_view(),		  name="apartment_create"),
     path("apartment/blukcreate/", views.CreateBulkApartmentAPIView.as_view(),		  name="apartment_bulk_create"),
     path("apartment/update/<int:pk>/",views.UpdateApartmentAPIView.as_view(),name="update_apartment"),
     path("apartment/delete/<int:pk>/",views.DeleteApartmentAPIView.as_view(),name="delete_apartment")
+
 ]
