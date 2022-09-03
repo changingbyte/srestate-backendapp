@@ -25,6 +25,8 @@ cache = redis.Redis(
     host=CACHES["default"]["host"],
     port=CACHES["default"]["port"], 
     password=CACHES["default"]["password"])
+POOL = redis.ConnectionPool(host= CACHES["default"]["host"], port=CACHES["default"]["port"], db=0)
+r = redis.StrictRedis(connection_pool=POOL)
 
 print(mongo_uri)
 client = pymongo.MongoClient(mongo_uri)
