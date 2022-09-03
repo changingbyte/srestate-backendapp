@@ -66,13 +66,23 @@ def find_match(SizeInput,size_matches):
     matches = []
     mul =1
     for i in sizelist:
+        print(i,"i")
         if checkisdigit(i) and len(i) :
             matches.append(float(i))
-        elif i in ["lk","lac","lakh","lak","lacs","lakhs"]:
+        
+        elif any(x in i for x in ["lk","lac","lakh","lak","lacs","lakhs"]):
+            index_c = i.find(next(filter(str.isalpha, i)))
+            if index_c:
+                matches.append(float(i[:index_c]))
             mul = 100000
-        elif i in ["cr"]:
+        elif any(x in i for x in ["cr"]):
+            index_c = i.find(next(filter(str.isalpha, i)))
+            if index_c:
+                matches.append(float(i[:index_c]))
             mul = 10000000
+    print(matches)
     if len(matches):
+        
         return matches[0]*mul
 
 
@@ -390,6 +400,7 @@ def filterSize(mydict):
     if "number_of_bedrooms" in mydict.keys():
         mydict["number_of_bedrooms"] = [ x.lower() for x in mydict["number_of_bedrooms"] ]
         filterRooms(mydict)
+        print(mydict)
     if "others" in mydict.keys():
         filterOthers(mydict)
     return mydict
@@ -462,6 +473,7 @@ def get_data_from_msg(string,mobile,multi= False):
                 json_data = filterSize(json_index[0])
                 estate.update(json_data)
         i = i+1
+    print(estate)
     if not estate_list:
         print("here")
         if multi:
