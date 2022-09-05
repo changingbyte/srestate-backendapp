@@ -240,6 +240,14 @@ class CreateBrokerAPIView(CreateAPIView):
                         msg="Created Successfully"
                         return ReturnResponse(success=True,msg=msg, status=status.HTTP_201_CREATED)
                     else:
+                        mycol = db.UserManagement_user
+                        updatestmt = (
+                            {"mobile":request.user.mobile},
+                            {"$set":{
+                                "is_profile_completed":True
+                            }}
+                        )
+                        broker = mycol.update_one(*updatestmt)
                         msg = "Updated Successfully"
                         return ReturnResponse(success=True,msg=msg, status=status.HTTP_200_OK)
             else:
