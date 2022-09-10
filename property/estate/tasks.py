@@ -177,7 +177,7 @@ def send_message_task(self,data,mobile_number,balance,mobile,findQuery):
             updatestmt = (
                 {"mobile":mobile},
                 {"$set":{
-                    "balance": balance - no_of_messages*5,
+                    "balance": balance - no_of_messages*50,
                     "is_premium": True,
                 }}
             )

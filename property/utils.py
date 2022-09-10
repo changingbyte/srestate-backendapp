@@ -8,7 +8,7 @@ from django.http import JsonResponse
 def check_balance(request,n):
     amount  = 0
     if "sms" in request.data and  request.data["sms"]:
-        amount = amount +  5 * n
+        amount = amount +  50 * n
     if "whatsapp" in request.data and  request.data["whatsapp"]:
         amount = amount +  10 * n
     
