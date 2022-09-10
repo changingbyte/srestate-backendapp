@@ -135,6 +135,7 @@ def send_whatsapp_msg(mobile,messageString):
         msg_status= {}
         msg_status["success"] = False
         msg_status["msg"] = str(e)
+        print(msg_status)
         return msg_status
 
 
@@ -149,7 +150,7 @@ def send_otp(mobile, appString):
         message = client.messages \
                         .create(
                             body=f"SR ESTATE for OTP for Verification  {appString}  {OTP}",
-                            from_='+19785772148',
+                            from_='+19715715369',
                             to=f'+91{mobile}'
                         )
         print(message.sid)
@@ -166,7 +167,7 @@ def send_sms(mobile,messageString):
         message = client.messages \
                         .create(
                             body=messageString,
-                            from_='+19785772148',
+                            from_='+19715715369',
                             to=f'+91{mobile}'
                         )
         print(message.sid)
