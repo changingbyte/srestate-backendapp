@@ -16,8 +16,8 @@ from datetime import datetime
 # and set the environment variables. See http://twil.io/secure
 
 def read_json_related(findQuery):
-    budget=0 
-    floor_space =0
+    budget=1000000
+    floor_space =1000000
     number_of_bedrooms =0
     estate_status = ""
     if "estate_type" in findQuery.keys():
@@ -64,8 +64,9 @@ def read_json_related(findQuery):
 
 
 def find_related_db(mycol,findQuery):
-    budget=0 
-    floor_space =0
+    budget=1000000
+    floor_space =1000000
+    number_of_bedrooms = 0
     findQuery,number_of_bedrooms,budget,floor_space,estate_status = read_json_related(findQuery)
     
     print(findQuery,number_of_bedrooms,budget,floor_space,estate_status)
@@ -74,31 +75,32 @@ def find_related_db(mycol,findQuery):
         custom_filter_list.append({"rent_status":findQuery["rent_status"]})
     if "broker_mobile" in findQuery:
         custom_filter_list.append({ "broker_mobile": findQuery["broker_mobile"] })
-    if "estate_type" not in findQuery:
-        return []
-    if "flat" not in findQuery["estate_type"]:
-        
-        queryset= mycol.aggregate([
-            {
-                "$match" : { "$and": [ 
-                    {"$and": [{ "id": {"$ne":findQuery["id"]} },{ "estate_status": {"$in":estate_status} },{ "estate_type": {"$in" :findQuery["estate_type"] }},{ "area": {"$in" :findQuery["area"] }}] + custom_filter_list},
+    if "area"  in findQuery and findQuery["area"]:
+        custom_filter_list.append({ "area": {"$in" :findQuery["area"] }})
+    if "estate_type" in findQuery:
+        custom_filter_list.append({ "estate_type": {"$in" :findQuery["estate_type"] }})
+    if "estate_status" in findQuery:
+        custom_filter_list.append({ "estate_status": {"$in":estate_status} })
+    if number_of_bedrooms:
+        custom_filter_list.append({ "number_of_bedrooms": {"$in":number_of_bedrooms} })
+
+
+    print(custom_filter_list)
+    
+    queryset= mycol.aggregate([
+        {
+            "$match" : {"$and": [{ "id": {"$ne":findQuery["id"]} }] +
+                [
                     {"$or": [
-                      {"$or" : [ { "floor_space": {"$lte": floor_space } }]},
-                      {"$or" :[{ "budget": {"$lte": budget } }]}
-                    ]}
-                ]} } ]
-            )
-    else:
-        queryset= mycol.aggregate([
-            {
-                "$match" : { "$and": [ 
-                    {"$and": [{ "id": {"$ne":findQuery["id"]} },{ "estate_status": {"$in":estate_status} },{ "number_of_bedrooms":{"$in" :number_of_bedrooms }},{ "area": {"$in" :findQuery["area"] }},{ "estate_type": {"$in" :findQuery["estate_type"] }}] + custom_filter_list},
-                    {"$or": [
-                      {"$or" : [ { "floor_space": {"$lte": floor_space } }]},
-                      {"$or" :[{ "budget": {"$lte": budget } }]}
-                    ]}
-                ]} } ]
-            )
+                    {"$or" : [ { "floor_space": {"$lte": floor_space } }]},
+                    {"$or" :[{ "budget": {"$lte": budget } }]}
+                ]}
+
+                ] + custom_filter_list
+                
+
+                } } ]
+        )
     serilizer = EsateRealtedObjectSerilaizer(data=list(queryset),many=True)
     if serilizer.is_valid():
         return serilizer.data
