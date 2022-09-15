@@ -52,6 +52,7 @@ class EstateSerializer(serializers.ModelSerializer):
 
 
 class EsateRealtedObjectSerilaizer(serializers.Serializer):
+    id = serializers.IntegerField()
     estate_name = serializers.CharField()
     city = serializers.CharField()
     estate_type = serializers.CharField()
