@@ -85,7 +85,7 @@ class EsateRealtedObjectSerilaizer(serializers.Serializer):
     
     def get_is_my_property(self,obj):
         if "broker_mobile" in obj:
-            return str(int(obj["broker_mobile"]))
+            return str(obj["broker_mobile"])
         return "0"
 
 
