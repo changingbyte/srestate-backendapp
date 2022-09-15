@@ -82,6 +82,11 @@ class EsateRealtedObjectSerilaizer(serializers.Serializer):
                 return True
             return False
         return False
+    
+    def get_is_my_property(self,obj):
+        if "broker_mobile" in obj:
+            return str(int(obj["broker_mobile"]))
+        return "0"
 
 
 class EstateStatusSerializer(serializers.ModelSerializer):
