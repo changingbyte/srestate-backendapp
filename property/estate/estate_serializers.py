@@ -83,9 +83,9 @@ class EsateRealtedObjectSerilaizer(serializers.Serializer):
             return False
         return False
     
-    def get_is_my_property(self,obj):
-        if "broker_mobile" in obj:
-            return str(obj["broker_mobile"])
+    def get_floor_space(self,obj):
+        if "floor_space" in obj:
+            return str(obj["floor_space"])
         return "0"
 
 
