@@ -266,7 +266,7 @@ def get_filter_estate(request):
         
         mycol = db.property_estate
         queryset= mycol.find(findQuery)
-        serializer = EstateSerializer(queryset,many = True, context={'request': request})
+        serializer = EsateRealtedObjectSerilaizer(queryset,many = True, context={'request': request})
         return ReturnResponse(data=serializer.data,success=True, msg= "fetch successfully", status=status.HTTP_200_OK)
     except Exception as e:
         return ReturnResponse(errors=str(e),msg="Internal Server error", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
