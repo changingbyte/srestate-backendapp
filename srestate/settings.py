@@ -110,7 +110,7 @@ mongo_uri =  'mongodb+srv://srestateapi:' + str(urllib.parse.quote("changingbyte
 DATABASES = CONFIG_DB.get(ENV)
 AUTH_USER_MODEL = "UserManagement.User" 
 TWILIO_ACCOUNT_SID = "AC5cbfb760617460dafa2aeb1d7e1995c2"
-TWILIO_AUTH_TOKEN = "b8b62287c03115792861dfe1ac49f3c9"
+TWILIO_AUTH_TOKEN = "5933addcb59c35776d58fdf9a10e43b1"
 
 import dj_database_url
 db_from_env = dj_database_url.config(conn_max_age=600)
