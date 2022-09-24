@@ -56,7 +56,7 @@ class EsateRealtedObjectSerilaizer(serializers.Serializer):
     estate_name = serializers.CharField()
     city = serializers.CharField()
     estate_type = serializers.CharField()
-    furniture = serializers.CharField()
+    furniture = serializers.CharField(allow_blank=True)
     floor_space = serializers.SerializerMethodField()
     number_of_bedrooms = serializers.IntegerField()
     estate_description = serializers.CharField()
