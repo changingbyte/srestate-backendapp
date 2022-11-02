@@ -7,9 +7,29 @@ from UserManagement.utils import send_whatsapp_msg
 import asyncio
 import websockets
 import json
+from property.location.location_views import db
+from srestate.config import CACHES
+import redis
+from collections import defaultdict
+
+cache = redis.Redis(
+host=CACHES["default"]["host"],
+port=CACHES["default"]["port"], 
+password=CACHES["default"]["password"])
 
 
+
+def merge_dict(list_of_dict):
+    dd = defaultdict(list)
     
+    for d in list_of_dict: # you can list as many input dicts as you want here
+        for key, value in d.items():
+            if isinstance(value, list):
+                dd[key] = list(set(dd[key]+value))
+            elif value not in dd[key]:
+                dd[key].append(value)
+
+    return dict(dd)
 
 # or 
 @celery_app.task(bind=True, time_limit=2700)
@@ -78,3 +98,21 @@ def create_contact_message(self,data,send,recieve,interested):
     except Exception as e:
         print(str(e))  
         
+@celery_app.task(bind=True, time_limit=2700)
+def create_or_update_customer_query(self,data,mobile_number,owner,findQuery,interested):
+    try:
+        if not interested:
+            contact = False
+            mycol = db.property_estate
+            queryset= mycol.find(findQuery,{ '_id': False})
+            listestate =[]
+            if queryset:
+                listestate = list(queryset)
+                contact = db.property_enquiryquerys.find_one({"broker_number":owner,"mobile_number":mobile_number})
+                if not contact:
+                    contact = {"broker_number":owner,"mobile_number":mobile_number}
+                listestate.append(contact.get("query",{}))
+                contact["query"] = merge_dict(listestate)
+                contact = db.property_enquiryquerys.update({"broker_number":owner,"mobile_number":mobile_number},{"query":contact["query"]},upsert=True)
+    except Exception as e:
+        print(str(e))

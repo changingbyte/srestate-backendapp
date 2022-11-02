@@ -17,7 +17,7 @@ from property.location.location_views import db
 from chat.models import Contacts
 from UserManagement.utils import send_sms ,send_whatsapp_msg  , read_json_related ,find_related_db
 from property.estate.tasks import create_estate_attribute , create_estate_cache , send_message_task
-from chat.tasks import create_contact_message
+from chat.tasks import create_contact_message , create_or_update_customer_query
 from property.estate.wputils import get_data_from_msg
 
 
@@ -303,7 +303,7 @@ def send_message(request):
                 "error":" "}
             if queryset:
                 send_message_task.apply_async(args = [request.data,mobile_number,request.user.balance,request.user.mobile,findQuery])
-                
+                create_or_update_customer_query.apply_async(args = [request.data,mobile_number,request.user.mobile,findQuery,interested])
                 if response["success"]:
                     if interested:
                         create_contact_message.apply_async(args=[request.data,request.user.mobile,"BrokerBookAssitant",interested])
