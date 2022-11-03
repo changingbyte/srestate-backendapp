@@ -111,8 +111,8 @@ def create_or_update_customer_query(self,data,mobile_number,owner,findQuery,inte
                 contact = db.property_enquiryquerys.find_one({"broker_number":owner,"mobile_number":mobile_number})
                 if not contact:
                     contact = {"broker_number":owner,"mobile_number":mobile_number}
-                listestate.append(contact.get("query",{}))
-                contact["query"] = merge_dict(listestate)
-                contact = db.property_enquiryquerys.update({"broker_number":owner,"mobile_number":mobile_number},{"broker_number":owner,"mobile_number":mobile_number,"query":contact["query"]},upsert=True)
+                listestate.append(contact)
+                contact = merge_dict(listestate)
+                contact = db.property_enquiryquerys.update({"broker_number":owner,"mobile_number":mobile_number},contact,upsert=True)
     except Exception as e:
         print(str(e))
