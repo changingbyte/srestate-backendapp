@@ -15,7 +15,7 @@ import redis
 from property.utils import create_msg , check_balance ,ReturnResponse
 from property.location.location_views import db
 from chat.models import Contacts
-from UserManagement.utils import send_sms ,send_whatsapp_msg  , read_json_related ,find_related_db
+from UserManagement.utils import find_related_contacts, send_sms ,send_whatsapp_msg  , read_json_related ,find_related_db
 from property.estate.tasks import create_estate_attribute , create_estate_cache , send_message_task
 from chat.tasks import create_contact_message , create_or_update_customer_query
 from property.estate.wputils import get_data_from_msg
@@ -112,9 +112,15 @@ def estate_details(request,pk):
         queryset.pop("_id")
         if request.user.is_premium:
             queryset.pop("broker_mobile")
-        queryset = find_related_db(mycol,queryset)
-        serializer = EsateRealtedObjectSerilaizer(queryset,many = True, context={'request': request})
-        return ReturnResponse(data = serializer.data,success=True,msg="fetch successfully", status=status.HTTP_200_OK)
+        related_estate = find_related_db(mycol,queryset)
+        matching_contacts = find_related_contacts(mycol = db.property_enquiryquerys,findQuery= queryset)
+        print(matching_contacts)
+        serializer = EsateRealtedObjectSerilaizer(related_estate,many = True, context={'request': request})
+        data = {
+            "estates":serializer.data,
+            "contacts":matching_contacts
+        }
+        return ReturnResponse(data = data,success=True,msg="fetch successfully", status=status.HTTP_200_OK)
     except Exception as e:
         return ReturnResponse(errors=str(e),success=False,msg="Internal Server error", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -303,7 +309,7 @@ def send_message(request):
                 "error":" "}
             if queryset:
                 send_message_task.apply_async(args = [request.data,mobile_number,request.user.balance,request.user.mobile,findQuery])
-                create_or_update_customer_query.apply_async(args = [request.data,mobile_number,request.user.mobile,findQuery,interested])
+                create_or_update_customer_query.apply_async(args = [request.data,request.data["mobile"],request.user.mobile,findQuery,interested])
                 if response["success"]:
                     if interested:
                         create_contact_message.apply_async(args=[request.data,request.user.mobile,"BrokerBookAssitant",interested])

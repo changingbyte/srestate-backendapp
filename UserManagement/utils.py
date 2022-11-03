@@ -69,7 +69,7 @@ def find_related_db(mycol,findQuery):
     number_of_bedrooms = 0
     findQuery,number_of_bedrooms,budget,floor_space,estate_status = read_json_related(findQuery)
     
-    print(findQuery,number_of_bedrooms,budget,floor_space,estate_status)
+    # print(findQuery,number_of_bedrooms,budget,floor_space,estate_status)
     custom_filter_list = []
     if "rent_status" in findQuery:
         custom_filter_list.append({"rent_status":findQuery["rent_status"]})
@@ -114,6 +114,25 @@ def find_related_db(mycol,findQuery):
         
     # else:
     #     return  []
+
+def find_related_contacts(mycol,findQuery):
+    
+    custom_filter_list = {}
+    print(findQuery)
+    for keys in findQuery:
+        if findQuery[keys] and findQuery[keys] is not None and keys not in ["id"]:
+            if isinstance(findQuery[keys],list):
+                custom_filter_list[keys] =findQuery[keys][0]
+            else:
+                custom_filter_list[keys] =findQuery[keys]
+    print(mycol)
+    queryset= mycol.find(custom_filter_list,{"broker_number":1,"mobile_number":1,"_id":0,"id":1})
+    data = list(queryset)
+    if queryset:
+        return data
+    else:
+        return []
+
 
 def send_whatsapp_msg(mobile,messageString):
     try:
