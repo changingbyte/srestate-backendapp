@@ -29,9 +29,9 @@ CONFIG_DB = {
         },
         "CACHES" : {
     'default': {
-        "host":"localhost",
-        "port":"6379",
-        "password":"Jashagar123$"
+        "host":"redis-10641.c301.ap-south-1-1.ec2.cloud.redislabs.com",
+        "port":"10641",
+        "password":"h9Wkb8znF8tcWquRFRr6NiuCBKPkpsw1"
      }
     },
 
@@ -66,9 +66,9 @@ CONFIG_DB = {
         },
         "CACHES" : {
     'default': {
-        "host":"redis-14152.c264.ap-south-1-1.ec2.cloud.redislabs.com",
-        "port":"14152",
-        "password":"93mHkCGxkxM0Wj2yjcO8bxkhlECCOCis"
+        "host":"redis-10641.c301.ap-south-1-1.ec2.cloud.redislabs.com",
+        "port":"10641",
+        "password":"h9Wkb8znF8tcWquRFRr6NiuCBKPkpsw1"
      }
     },
 

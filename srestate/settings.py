@@ -29,7 +29,7 @@ SECRET_KEY = 'os*+e_tp3#-yj#5lr^da=2%4!omhenb%$@-emahbe63+qjpa-m'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["srestate-dev-app-9z8ml.ondigitalocean.app","srestateapi.herokuapp.com","127.0.0.1","c2bd-2405-201-2018-daac-fbf4-be0e-75a-79a2.in.ngrok.io"]
+ALLOWED_HOSTS = ["srestate-dev-app-9z8ml.ondigitalocean.app","srestateapi.herokuapp.com","127.0.0.1","c2bd-2405-201-2018-daac-fbf4-be0e-75a-79a2.in.ngrok.io","localhost"]
 
 
 # Application definition
@@ -109,8 +109,8 @@ mongo_uri =  'mongodb+srv://srestateapi:' + str(urllib.parse.quote("changingbyte
 
 DATABASES = CONFIG_DB.get(ENV)
 AUTH_USER_MODEL = "UserManagement.User" 
-TWILIO_ACCOUNT_SID = "AC5cbfb760617460dafa2aeb1d7e1995c2"
-TWILIO_AUTH_TOKEN = "5933addcb59c35776d58fdf9a10e43b1"
+TWILIO_ACCOUNT_SID = "AC29548cff456daeeb075fb95521e31a66"
+TWILIO_AUTH_TOKEN = "627b99dd6099fa66767c1f634dbbd7d9"
 
 import dj_database_url
 db_from_env = dj_database_url.config(conn_max_age=600)
@@ -133,7 +133,7 @@ USE_TZ = True
 #celery Broker
 
 from celery.schedules import crontab   
-CELERY_BROKER_URL = 'redis://default:93mHkCGxkxM0Wj2yjcO8bxkhlECCOCis@redis-14152.c264.ap-south-1-1.ec2.cloud.redislabs.com:14152/0' 
+CELERY_BROKER_URL = 'redis://default:h9Wkb8znF8tcWquRFRr6NiuCBKPkpsw1@redis-10641.c301.ap-south-1-1.ec2.cloud.redislabs.com:10641/0' 
 CELERY_TIMEZONE = 'Asia/Kolkata'   
 # # Let's make things happen 
 # CELERY_BEAT_SCHEDULE = {

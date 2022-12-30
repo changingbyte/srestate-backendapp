@@ -171,7 +171,7 @@ def send_otp(mobile, appString):
         message = client.messages \
                         .create(
                             body=f"SR ESTATE for OTP for Verification  {appString}  {OTP}",
-                            from_='+19715715369',
+                            from_='+17206690469',
                             to=f'+91{mobile}'
                         )
         print(message.sid)
@@ -188,7 +188,7 @@ def send_sms(mobile,messageString):
         message = client.messages \
                         .create(
                             body=messageString,
-                            from_='+19715715369',
+                            from_='+17206690469',
                             to=f'+91{mobile}'
                         )
         print(message.sid)

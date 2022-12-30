@@ -29,7 +29,7 @@ class Area(models.Model):
         #db_table = 'area'
         unique_together = (('area_name', 'city'),)
     def __str__(self):
-        return self.area_name + "," + self.city.city_name
+        return self.area_name + "," + self.city
 
 
 class Apartment(models.Model):
