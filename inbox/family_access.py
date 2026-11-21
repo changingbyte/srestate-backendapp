@@ -81,13 +81,13 @@ def member_label(mobile: str) -> str:
 
 
 def format_team_roster() -> str:
-    lines = ["*Shreeshyam — team*", ""]
+    lines = ["*Shreeshyam - team*", ""]
     for m in FamilyMember.objects.order_by("role", "name"):
-        status = "✅" if m.is_active else "❌ band"
+        status = "OK" if m.is_active else "band"
         role_h = {"super_admin": "Admin", "operator": "Kaam", "tester": "Test"}.get(
             m.role, m.role
         )
-        lines.append(f"{status} *{m.name}* — {m.mobile} ({role_h})")
+        lines.append(f"{status} *{m.name}* - {m.mobile} ({role_h})")
     lines.append("")
     lines.append("_Naya save → JP / Jitendra par auto._")
     lines.append("_Admin (Prince): *hatado jash* | *jodo 99… Naam*_")

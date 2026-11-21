@@ -10,18 +10,18 @@ from inbox.models import FamilyMember, LeadRecord, WhatsappEstateMessage
 
 
 def format_family_roster() -> list[str]:
-    lines = ["*Team — naam | mobile:*"]
+    lines = ["*Team - naam | mobile:*"]
     members = FamilyMember.objects.filter(
         mobile__in=settings.FAMILY_ALLOWED_MOBILES,
         is_active=True,
     ).order_by("name")
     if not members:
         for mobile in settings.FAMILY_ALLOWED_MOBILES:
-            lines.append(f"• …{mobile[-4:]} — {mobile}")
+            lines.append(f"• ...{mobile[-4:]} - {mobile}")
         return lines
     for m in members:
         name = m.name.strip() or f"Member {m.mobile[-4:]}"
-        lines.append(f"• *{name}* — {m.mobile}")
+        lines.append(f"• *{name}* - {m.mobile}")
     return lines
 
 
@@ -30,13 +30,13 @@ def format_family_pending_leads() -> list[str]:
         "assignee_mobile", "-created_at"
     )[:12]
     if not open_leads:
-        return ["_Abhi koi open property kaam nahi — naya message aaye to bot par bhej dena._"]
-    lines = ["*Poori family — pending:*"]
+        return ["_Abhi koi open property kaam nahi. Naya message aaye to bot par bhej dena._"]
+    lines = ["*Poori family - pending:*"]
     for L in open_leads:
         assignee = _member_label(L.assignee_mobile)
         sharer = _member_label(L.shared_by_mobile)
-        phone = L.contact_mobile or "—"
-        lines.append(f"• No. {L.id} — {L.summary}")
+        phone = L.contact_mobile or "-"
+        lines.append(f"• No. {L.id} - {L.summary}")
         lines.append(f"  {sharer} → *{assignee}* | 📞 {phone}")
     return lines
 
@@ -46,10 +46,10 @@ def build_group_care_message(slot: str, recipient_mobile: str) -> str:
     brand = settings.FAMILY_BRAND_NAME
 
     if slot == "morning":
-        headline = f"☀️ *Subah update* — {now:%d %b %Y}"
+        headline = f"*Subah update* - {now:%d %b %Y}"
         closing = "Shaam ko phir poori family ka haal bhejenge."
     else:
-        headline = f"🌆 *Shaam update* — {now:%d %b %Y}"
+        headline = f"*Shaam update* - {now:%d %b %Y}"
         closing = "Ho gaya ho to *ho gaya* likh dena. Kal subah phir."
 
     you = _member_label(recipient_mobile)
@@ -70,7 +70,7 @@ def build_group_care_message(slot: str, recipient_mobile: str) -> str:
     ]
     if mine:
         for L in mine:
-            lines.append(f"• No. {L.id} — {L.summary}")
+            lines.append(f"• No. {L.id} - {L.summary}")
     else:
         lines.append("_Aap par koi pending nahi._")
 

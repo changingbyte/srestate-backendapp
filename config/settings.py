@@ -81,6 +81,8 @@ TWILIO_VALIDATE_SIGNATURE = os.environ.get("TWILIO_VALIDATE_SIGNATURE", "False")
     "true",
     "yes",
 )
+# Exact public callback URL; avoids proxy http/https signature mismatches.
+TWILIO_WEBHOOK_URL = os.environ.get("TWILIO_WEBHOOK_URL", "")
 
 FAMILY_ALLOWED_MOBILES = [
     m.strip()

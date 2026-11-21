@@ -1,26 +1,26 @@
 """Seedhe, simple Hindi — family bot."""
 
-WELCOME_TEXT = """*Namaste — Shreeshyam helper*
+WELCOME_TEXT = """*Namaste - Shreeshyam helper*
 
 *3 kaam:*
-1) Broker message → copy-paste (*save*)
-2) Dhundhna → *Query 3bhk vesu*
-3) Buyer hai → *I have buyer 3bhk vesu* (save nahi)
+1) Broker message -> copy-paste (*save*)
+2) Dhundhna -> *Query 3bhk vesu*
+3) Buyer hai -> *I have buyer 3bhk vesu* (save nahi)
 
-*Naya save → JP / Jitendra par auto.*
+*Naya save -> JP / Jitendra par auto.*
 
 *meri list* | *madad* | *team*"""
 
 HELP_TEXT = """*Seedhi guide*
 
-*Save* — property paste / `Add …`
-*Dhundho* — `Query …` ya `I have buyer …`
-*List* — `meri list`
-*Ho gaya* — `ho gaya` ya `ho gaya 5`
-*Team* — `team` (Prince admin: `hatado naam` / `jodo 99… Naam`)
+*Save* - property paste / `Add ...`
+*Dhundho* - `Query ...` ya `I have buyer ...`
+*List* - `meri list`
+*Ho gaya* - `ho gaya` ya `ho gaya 5`
+*Team* - `team` (Prince admin: `hatado naam` / `jodo 99... Naam`)
 
 Sale: `Query buy` = diary ki *sell* listings.
-Rent: `kiraye par lena …` | `tenant dhundo …`"""
+Rent: `kiraye par lena ...` | `tenant dhundo ...`"""
 
 REJECT_MSG = (
     "Yeh listing jaisi nahi lagi.\n"
@@ -41,10 +41,10 @@ QUERY_EMPTY_STOCK = (
 
 QUERY_EMPTY_DEMAND = (
     "Kharidar enquiry nahi.\n"
-    "Buyer requirement save karo, phir *kharidar dhundo …*"
+    "Buyer requirement save karo, phir *kharidar dhundo ...*"
 )
 
-ADD_OK_PREFIX = "✅ {count} property save ho gayi:\n\n"
+ADD_OK_PREFIX = "OK. {count} property save ho gayi:\n\n"
 
 QUERY_OK_PREFIX = "*Yeh mili:*\n\n"
 QUERY_OK_STOCK = "*Client ko (sale/rent):*\n\n"

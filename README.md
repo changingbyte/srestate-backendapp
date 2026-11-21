@@ -17,6 +17,12 @@ copy .env.example .env
 Twilio Console → WhatsApp sandbox → **When a message comes in**:  
 `https://<your-host>/whatsapp/inbound/`
 
+Choose **POST** as the webhook method in Twilio.
+
+Set this exact URL as `TWILIO_WEBHOOK_URL` in `.env` when
+`TWILIO_VALIDATE_SIGNATURE=True`. The endpoint returns the reply as TwiML, so
+the sender reply does not depend on a second outbound Twilio API call.
+
 ## Commands
 
 | Message | Action |
