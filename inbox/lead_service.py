@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import re
-from datetime import timedelta
 
 from django.conf import settings
 from django.utils import timezone
@@ -14,22 +13,27 @@ def _member_label(mobile: str) -> str:
     m = FamilyMember.objects.filter(mobile=mobile).first()
     if m and m.name.strip():
         return m.name.strip()
-    return mobile[-4:]
+    return f"number …{mobile[-4:]}"
 
 
 def build_summary(msg: WhatsappEstateMessage, parsed: dict) -> str:
     bits = []
     if msg.number_of_bedrooms:
-        bits.append(f"{msg.number_of_bedrooms}bhk")
+        bits.append(f"{msg.number_of_bedrooms} BHK")
+    if msg.area:
+        bits.append(msg.area.title())
     if msg.estate_type:
         bits.append(msg.estate_type)
-    if msg.area:
-        bits.append(msg.area)
     if msg.estate_status:
-        bits.append(msg.estate_status)
+        if msg.estate_status in ("rent",):
+            bits.append("kiraye par")
+        elif msg.estate_status in ("sell", "buy", "purchase"):
+            bits.append("kharid-beka")
+        else:
+            bits.append(msg.estate_status)
     if msg.budget:
-        bits.append(f"₹{msg.budget}")
-    return " ".join(bits) if bits else (msg.raw_body[:80] + "…")
+        bits.append(f"Rs {msg.budget}")
+    return " ".join(bits) if bits else msg.raw_body[:70] + "…"
 
 
 def create_lead_from_listing(
@@ -48,22 +52,23 @@ def create_lead_from_listing(
 
 
 def save_reply_with_lead(lead: LeadRecord) -> str:
-    who = _member_label(lead.shared_by_mobile)
     lines = [
-        "Theek hai — listing yaad kar li 👍",
+        "✅ *Theek hai ji, maine yaad kar liya.*",
+        "",
         f"*{lead.summary}*",
     ]
     if lead.contact_mobile:
-        lines.append(f"Contact: {lead.contact_mobile}")
-    lines.append(f"Lead #{lead.id} | Bheja: {who}")
+        lines.append(f"📞 Phone: {lead.contact_mobile}")
+    lines.append(f"📝 Diary number: *{lead.id}* (baad mein kaam aayega)")
     lines.append("")
-    lines.append("Kisi family member ko dena ho: `assign 9328059281`")
-    lines.append("Apni list: `meri leads`")
+    lines.append("Kisi aur ko dena ho to likho:")
+    lines.append("*de do 9328059281* (ya member ka naam)")
+    lines.append("Aaj ka kaam dekho: *meri list*")
     return "\n".join(lines)
 
 
 def resolve_family_mobile(token: str) -> str | None:
-    token = token.strip()
+    token = token.strip().lower()
     if re.fullmatch(r"\d{10}", token):
         if token in settings.FAMILY_ALLOWED_MOBILES:
             return token
@@ -80,30 +85,36 @@ def assign_lead(actor_mobile: str, remainder: str) -> str:
     target = None
     if len(parts) >= 2 and parts[0].isdigit():
         lead_id = int(parts[0])
-        target = resolve_family_mobile(parts[1])
-    elif parts:
+        target = resolve_family_mobile(" ".join(parts[1:]))
+    elif len(parts) == 1:
+        if parts[0].isdigit():
+            return "Kisko dena hai? Jaise: *de do rahul* ya *de do 9328059281*"
         target = resolve_family_mobile(parts[0])
-        lead = (
-            LeadRecord.objects.filter(shared_by_mobile=actor_mobile, status=LeadRecord.STATUS_OPEN)
-            .order_by("-created_at")
-            .first()
-        )
-        if lead:
-            lead_id = lead.id
+    elif parts:
+        target = resolve_family_mobile(" ".join(parts))
     if not target:
-        return "Family number ya naam samajh nahi aaya. Example: `assign 9328059281` ya `assign 5 rahul`"
+        return (
+            "Kisko dena hai — naam ya 10 digit mobile likho.\n"
+            "Jaise: *de do rahul* ya *de do 9328059281*"
+        )
     if lead_id:
         try:
             lead = LeadRecord.objects.get(id=lead_id)
         except LeadRecord.DoesNotExist:
-            return f"Lead #{lead_id} nahi mili."
+            return f"Diary number {lead_id} nahi mila."
     else:
-        lead = LeadRecord.objects.filter(status=LeadRecord.STATUS_OPEN).order_by("-created_at").first()
+        lead = (
+            LeadRecord.objects.filter(
+                shared_by_mobile=actor_mobile,
+                status=LeadRecord.STATUS_OPEN,
+            )
+            .order_by("-created_at")
+            .first()
+        )
         if not lead:
-            return "Koi open lead nahi hai."
-
-    if lead.shared_by_mobile != actor_mobile and lead.assignee_mobile != actor_mobile:
-        pass
+            lead = LeadRecord.objects.filter(status=LeadRecord.STATUS_OPEN).order_by("-created_at").first()
+        if not lead:
+            return "Abhi koi open enquiry nahi — pehle property ka message bhejo."
 
     lead.assignee_mobile = target
     lead.save(update_fields=["assignee_mobile"])
@@ -112,31 +123,44 @@ def assign_lead(actor_mobile: str, remainder: str) -> str:
     send_whatsapp(
         target,
         (
-            f"*{from_name}* ne aapko lead #{lead.id} di:\n"
+            f"*Namaste {to_name} ji,*\n"
+            f"{from_name} ne aapko ek property di hai:\n\n"
             f"{lead.summary}\n"
-            f"Contact: {lead.contact_mobile or 'message mein dekho'}\n\n"
-            f"Ho jaye to: `ho gaya {lead.id}`"
+            f"📞 {lead.contact_mobile or 'number message mein hai'}\n"
+            f"Diary no. {lead.id}\n\n"
+            f"Ho jaye to likhna: *ho gaya {lead.id}*"
         ),
     )
-    return f"✅ Lead #{lead.id} ab *{to_name}* ke paas. Unhe message bhej diya."
+    return f"✅ *{to_name}* ko bata diya. Property diary no. {lead.id}."
 
 
-def complete_lead(actor_mobile: str, lead_id: int) -> str:
-    try:
-        lead = LeadRecord.objects.get(id=lead_id)
-    except LeadRecord.DoesNotExist:
-        return "Yeh lead nahi mili."
+def complete_lead(actor_mobile: str, lead_id: int | None) -> str:
+    if lead_id is None:
+        lead = (
+            LeadRecord.objects.filter(assignee_mobile=actor_mobile, status=LeadRecord.STATUS_OPEN)
+            .order_by("-created_at")
+            .first()
+        )
+        if not lead:
+            return "Koi pending kaam nahi dikhta. Shukriya!"
+    else:
+        try:
+            lead = LeadRecord.objects.get(id=lead_id)
+        except LeadRecord.DoesNotExist:
+            return "Yeh diary number galat hai. *meri list* se sahi number dekho."
+
     if lead.assignee_mobile != actor_mobile and lead.shared_by_mobile != actor_mobile:
-        return "Ye lead aapki list mein nahi hai."
+        return "Yeh enquiry aapke naam par nahi hai."
+
     lead.status = LeadRecord.STATUS_DONE
     lead.completed_at = timezone.now()
     lead.save(update_fields=["status", "completed_at"])
     if lead.shared_by_mobile != actor_mobile:
         send_whatsapp(
             lead.shared_by_mobile,
-            f"✅ {_member_label(actor_mobile)} ne lead #{lead.id} complete kar di: {lead.summary}",
+            f"✅ Khush khabri: {_member_label(actor_mobile)} ne property no. {lead.id} complete kar di.\n{lead.summary}",
         )
-    return f"Shabash — lead #{lead.id} band kar di. Record save hai."
+    return f"✅ Bahut achha! No. {lead.id} band — {lead.summary}\nDhanyavaad 🙏"
 
 
 def format_my_leads(mobile: str) -> str:
@@ -149,30 +173,32 @@ def format_my_leads(mobile: str) -> str:
         status=LeadRecord.STATUS_OPEN,
     ).exclude(assignee_mobile=mobile).order_by("-created_at")[:5]
 
-    lines = ["*Aapka dashboard* (poora record database mein hai)\n"]
+    lines = ["*Aapki property diary*\n"]
 
-    lines.append("*📌 Aapko karna hai:*")
+    lines.append("*🔹 Aap par hai (phone / visit karna hai):*")
     if mine:
         for L in mine:
-            from_who = _member_label(L.shared_by_mobile)
-            src = "aapki" if L.shared_by_mobile == mobile else f"{from_who} ne bheji"
-            lines.append(
-                f"#{L.id} {L.summary} | {src} | call {L.contact_mobile or '—'}"
-            )
+            if L.shared_by_mobile == mobile:
+                src = "aapne bheji"
+            else:
+                src = f"{_member_label(L.shared_by_mobile)} ne di"
+            phone = L.contact_mobile or "message dekho"
+            lines.append(f"• No. {L.id} — {L.summary}")
+            lines.append(f"  ({src}) | 📞 {phone}")
     else:
-        lines.append("_Abhi kuch pending nahi — araam se._")
+        lines.append("_Abhi koi kaam pending nahi. Araam karo 😊_")
 
     if shared:
-        lines.append("\n*📤 Aapne jisko diya (open):*")
+        lines.append("\n*🔹 Aapne jisko diya (abhi open):*")
         for L in shared:
-            lines.append(f"#{L.id} → {_member_label(L.assignee_mobile)} | {L.summary}")
+            lines.append(f"• No. {L.id} → {_member_label(L.assignee_mobile)} — {L.summary}")
 
-    lines.append("\n`ho gaya 5` — complete | `assign 93xx` — kisi ko do")
+    lines.append("\n*Ho gaya?* likho *ho gaya* ya *ho gaya 5*")
+    lines.append("*Kisi ko dena?* *de do naam ya number*")
     return "\n".join(lines)
 
 
 def send_care_message(mobile: str, slot: str) -> bool:
-    """One friendly message per person, twice a day (morning / evening)."""
     now = timezone.localtime()
     open_mine = LeadRecord.objects.filter(
         assignee_mobile=mobile,
@@ -180,39 +206,40 @@ def send_care_message(mobile: str, slot: str) -> bool:
     ).order_by("next_action_at", "-created_at")[:5]
 
     if slot == "morning":
-        title = f"☀️ Subah {now:%d %b} — short update"
-        closing = "Din mein ek baar shaam ko phir yaad dilaaunga. Bas `meri leads` ya seedha kaam karte raho."
+        title = f"☀️ *Subah ki namaste* — {now:%d %b}"
+        closing = "Shaam ko ek chhota sa message aur aayega. Property paste karte raho."
     else:
-        title = f"🌆 Shaam {now:%d %b} — gentle check-in"
-        closing = "Kal subah phir milte hain. `ho gaya` likh dena jahan ho chuka."
+        title = f"🌆 *Shaam ka haal* — {now:%d %b}"
+        closing = "Ho chuka ho to *ho gaya* likh dena. Kal subah phir mileinge."
 
     lines = [title, ""]
 
     if open_mine:
-        lines.append("*Aaj worth your time:*")
+        lines.append("*Aaj yeh yaad rakho:*")
         for L in open_mine:
             who = _member_label(L.shared_by_mobile)
-            extra = f" | {L.action_note}" if L.action_note else ""
-            lines.append(f"• #{L.id} {L.summary}")
-            lines.append(f"  Bheja: {who} | Call: {L.contact_mobile or '—'}{extra}")
+            phone = L.contact_mobile or "—"
+            lines.append(f"• {L.summary}")
+            lines.append(f"  No. {L.id} | {who} ne bheji | 📞 {phone}")
+            if L.action_note:
+                lines.append(f"  Yaad: {L.action_note}")
     else:
-        lines.append("Koi open lead nahi — nayi listing paste kar sakte ho, main save kar lunga.")
+        lines.append("Aaj koi pending property kaam nahi — naya message aaye to yahi bhej dena.")
 
     new_today = WhatsappEstateMessage.objects.filter(
         created_at__date=now.date(),
         sender_mobile=mobile,
     ).count()
     if new_today:
-        lines.append(f"\nAaj aapne *{new_today}* listing save ki.")
+        lines.append(f"\nAaj aapne *{new_today}* property save karwai.")
 
     lines.append("")
     lines.append(closing)
+    lines.append("*meri list* — poori diary")
 
     ok, _ = send_whatsapp(mobile, "\n".join(lines))
     if ok and open_mine:
-        LeadRecord.objects.filter(
-            id__in=[L.id for L in open_mine],
-        ).update(last_nudge=slot)
+        LeadRecord.objects.filter(id__in=[L.id for L in open_mine]).update(last_nudge=slot)
     return ok
 
 

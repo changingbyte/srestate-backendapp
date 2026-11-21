@@ -162,12 +162,15 @@ _HELP_WORDS = frozenset(
         "help",
         "madad",
         "madat",
-        "guide",
         "sahayata",
         "sahaayata",
         "kaise",
         "kese",
-        "commands",
+        "batao",
+        "bataiye",
+        "samjhao",
+        "samjhaye",
+        "kya karna hai",
     }
 )
 
@@ -189,17 +192,34 @@ _GREETINGS = frozenset(
     }
 )
 
-_QUERY_PREFIXES = ("query", "search", "find", "dhoondo", "dhundo", "khojo", "enquiry")
+_QUERY_PREFIXES = (
+    "query",
+    "khojo",
+    "khojho",
+    "dhoondo",
+    "dhundo",
+    "dhundho",
+    "dhundhna",
+    "enquiry",
+)
 
 _ADD_PREFIXES = ("add", "jodo", "save karo", "save")
 
-_FOLLOWUP_PREFIXES = ("followup", "follow-up", "reminder", "yaad dilao", "yaad")
+_FOLLOWUP_PREFIXES = ("yaad", "yaad dilao", "kal phone", "followup", "reminder")
 
 _PENDING_PREFIXES = ("pending", "meri followup", "meri follow up", "due list", "aaj ka kaam")
 
-_LEADS_PREFIXES = ("meri leads", "leads", "lead list", "dashboard", "record")
+_LEADS_PREFIXES = (
+    "meri list",
+    "meri leads",
+    "mera kaam",
+    "kya bacha",
+    "pending",
+    "aaj ka kaam",
+    "meri enquiry",
+)
 
-_ASSIGN_PREFIXES = ("assign", "bhejo", "de do", "transfer")
+_ASSIGN_PREFIXES = ("de do", "dedo", "bhej do", "bhejo", "assign", "sambhalo", "isko do")
 
 _DONE_PREFIXES = ("done", "ho gaya", "complete", "khatam", "ho gya")
 
@@ -221,12 +241,12 @@ def wants_help(body: str) -> bool:
     hints = (
         "save kaise",
         "kaise save",
-        "enquiry kaise",
-        "kaise daalu",
-        "kaise dale",
-        "listing kaise",
+        "kaise bheju",
         "kya likhu",
         "kya likhe",
+        "property kaise",
+        "yeh kaise chalega",
+        "samjha do",
     )
     return any(h in lower for h in hints)
 

@@ -95,10 +95,10 @@ def handle_inbound(from_mobile: str, body: str, twilio_sid: str = "") -> str:
         return assign_lead(from_mobile, remainder)
 
     if command == "done":
-        lead_id = remainder.strip().split()[0] if remainder.strip() else ""
-        if not lead_id.isdigit():
-            return "Bas likho: `ho gaya 3` (lead number)"
-        return complete_lead(from_mobile, int(lead_id))
+        parts = remainder.strip().split()
+        if parts and parts[0].isdigit():
+            return complete_lead(from_mobile, int(parts[0]))
+        return complete_lead(from_mobile, None)
 
     if command == "query":
         filters = parse_estate_message(remainder, from_mobile) or {}
@@ -122,19 +122,20 @@ def handle_inbound(from_mobile: str, body: str, twilio_sid: str = "") -> str:
     if command == "followup":
         due, note = parse_followup_note(remainder)
         if not due:
-            return "Samajh gaya reminder chahiye — example: `followup kal sham call broker`"
+            return "Kab yaad dilana hai? Jaise:\n*yaad kal sham broker ko phone*"
         lead = (
             LeadRecord.objects.filter(assignee_mobile=from_mobile, status=LeadRecord.STATUS_OPEN)
             .order_by("-created_at")
             .first()
         )
         if not lead:
-            return "Pehle koi listing save karo, phir follow-up set karenge."
+            return "Pehle koi property ka message bhejo, phir yaad set karenge."
         schedule_lead_action(lead, due, note)
         return (
-            f"Thik hai 👍 Lead #{lead.id} par yaad rakha:\n"
-            f"{due:%d/%m %H:%M} — {note}\n"
-            f"(Subah-shaam message mein dikhega, alag spam nahi.)"
+            f"✅ Theek hai ji.\n"
+            f"Diary no. {lead.id} — {due:%d/%m %H:%M} ko yaad dilaaunga.\n"
+            f"({note})\n"
+            f"Subah-shaam wale message mein dikhega."
         )
 
     parsed = parse_estate_message(body, from_mobile)
