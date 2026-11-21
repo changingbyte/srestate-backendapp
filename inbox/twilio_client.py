@@ -1,0 +1,27 @@
+from django.conf import settings
+from twilio.rest import Client
+
+
+def normalize_whatsapp_from(twilio_from: str) -> str:
+    """whatsapp:+919876543210 -> 9876543210"""
+    digits = "".join(c for c in twilio_from if c.isdigit())
+    if len(digits) >= 10:
+        return digits[-10:]
+    return digits
+
+
+def send_whatsapp(mobile: str, body: str) -> tuple[bool, str]:
+    if not settings.TWILIO_ACCOUNT_SID or not settings.TWILIO_AUTH_TOKEN:
+        return False, "Twilio not configured"
+    if len(body) > 1500:
+        body = body[:1497] + "..."
+    try:
+        client = Client(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
+        msg = client.messages.create(
+            from_=settings.TWILIO_WHATSAPP_FROM,
+            to=f"whatsapp:+91{mobile}",
+            body=body,
+        )
+        return True, msg.sid
+    except Exception as exc:
+        return False, str(exc)
