@@ -3,5 +3,6 @@
 __pycache__/
 *.pyc
 data/
+static/
 db.sqlite3
 *.pem
