@@ -66,6 +66,29 @@ class LeadRecord(models.Model):
         return f"#{self.id} {self.summary} → {self.assignee_mobile}"
 
 
+class ConversationState(models.Model):
+    mobile = models.CharField(max_length=10, primary_key=True)
+    last_lead_id = models.PositiveIntegerField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+class LeadEvent(models.Model):
+    EVENT_CREATED = "created"
+    EVENT_ASSIGNED = "assigned"
+    EVENT_REMINDER = "reminder"
+    EVENT_DONE = "done"
+    EVENT_DUPLICATE_WARN = "duplicate_warn"
+
+    lead = models.ForeignKey(LeadRecord, on_delete=models.CASCADE, related_name="events")
+    event_type = models.CharField(max_length=32, db_index=True)
+    actor_mobile = models.CharField(max_length=10, blank=True, default="")
+    detail = models.CharField(max_length=500, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+
+
 class FollowUpTask(models.Model):
     STATUS_PENDING = "pending"
     STATUS_SENT = "sent"

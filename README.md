@@ -35,7 +35,11 @@ Tweak areas and property types in `inbox/estate_lexicon.json`.
 | **9:00 AM** | `30 3 * * *` | `cd /home/princewhatsapp/srestate-backendapp && ./venv/bin/python manage.py daily_care_morning` |
 | **6:00 PM** | `30 12 * * *` | `cd /home/princewhatsapp/srestate-backendapp && ./venv/bin/python manage.py daily_care_evening` |
 
-Lead record: shared_by → assignee → contact. WhatsApp: `meri leads` | `assign 93…` | `ho gaya 3`
+Lead record: shared_by → assignee → contact. WhatsApp: `meri list` | `de do rahul` | `ho gaya 3`
+
+Subah/shaam message: **Shreeshyam Real Estate** (set `FAMILY_BRAND_NAME` in `.env`) — sab family members ko same group-style update: team naam + mobile, poori family pending, aap par.
+
+Rent search: `kiraye par lena 3bhk vesu` (rehna) | `tenant dhundo vesu` (rent dena)
 
 ## Adding an area
 

@@ -13,6 +13,18 @@ MSG_MAPPING = {
     "rent_status": "Rent detail",
 }
 
+_STATUS_LABEL = {
+    "sell": "Bik rahi hai (sale)",
+    "resale": "Bik rahi hai (resale)",
+    "sale": "Bik rahi hai",
+    "buy": "Kharidna chahte hain",
+    "purchase": "Kharidna chahte hain",
+    "required": "Requirement / enquiry",
+    "rent": "Kiraye par",
+    "lease": "Kiraye par",
+    "available": "Available",
+}
+
 
 def _scalar(value):
     if isinstance(value, list):
@@ -25,6 +37,8 @@ def format_estate_bullet(parsed: dict) -> str:
     for key, label in MSG_MAPPING.items():
         val = _scalar(parsed.get(key))
         if val not in (None, "", [], 0, "0"):
+            if key == "estate_status":
+                val = _STATUS_LABEL.get(str(val).lower(), val)
             lines.append(f"{label}: {val}")
     if not lines:
         return "Poora message diary mein save hai."

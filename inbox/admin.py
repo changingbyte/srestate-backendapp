@@ -1,6 +1,13 @@
 from django.contrib import admin
 
-from inbox.models import FamilyMember, FollowUpTask, LeadRecord, WhatsappEstateMessage
+from inbox.models import (
+    ConversationState,
+    FamilyMember,
+    FollowUpTask,
+    LeadEvent,
+    LeadRecord,
+    WhatsappEstateMessage,
+)
 
 
 @admin.register(FamilyMember)
@@ -45,3 +52,15 @@ class FollowUpTaskAdmin(admin.ModelAdmin):
     list_display = ("id", "owner_mobile", "due_at", "status", "note", "created_at")
     list_filter = ("status", "due_at")
     search_fields = ("note", "owner_mobile")
+
+
+@admin.register(LeadEvent)
+class LeadEventAdmin(admin.ModelAdmin):
+    list_display = ("id", "lead", "event_type", "actor_mobile", "detail", "created_at")
+    list_filter = ("event_type",)
+    search_fields = ("detail", "actor_mobile")
+
+
+@admin.register(ConversationState)
+class ConversationStateAdmin(admin.ModelAdmin):
+    list_display = ("mobile", "last_lead_id", "updated_at")

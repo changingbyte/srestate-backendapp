@@ -1,33 +1,37 @@
 from __future__ import annotations
 
-from datetime import timedelta
-
 from django.conf import settings
-from django.utils import timezone
 
-from inbox.estate_parser import (
-    parse_estate_message,
-    parse_multi_estate,
-    parse_query_days,
-    strip_command_prefix,
-)
+from inbox.estate_parser import parse_estate_message, parse_multi_estate, parse_query_days
 from inbox.followup_parser import parse_followup_note
+from inbox.intent import Intent, detect_intent
 from inbox.lead_service import (
     assign_lead,
     complete_lead,
     create_lead_from_listing,
     format_my_leads,
+    resolve_lead_for_reminder,
     save_reply_with_lead,
     schedule_lead_action,
 )
-from inbox.message_format import format_estate_bullet, format_estate_list
-from inbox.models import LeadRecord, WhatsappEstateMessage
+from inbox.message_format import format_estate_list
+from inbox.models import WhatsappEstateMessage
+from inbox.search_service import search_listings
 from inbox.twilio_client import send_whatsapp
+from inbox.search_modes import SearchMode
 from inbox.user_messages import (
     ADD_OK_PREFIX,
     HELP_TEXT,
     QUERY_EMPTY,
+    QUERY_EMPTY_DEMAND,
+    QUERY_EMPTY_RENT_DEMAND,
+    QUERY_EMPTY_RENT_STOCK,
+    QUERY_EMPTY_STOCK,
+    QUERY_OK_DEMAND,
     QUERY_OK_PREFIX,
+    QUERY_OK_RENT_DEMAND,
+    QUERY_OK_RENT_STOCK,
+    QUERY_OK_STOCK,
     QUERY_PARSE_FAIL,
     REJECT_MSG,
     WELCOME_TEXT,
@@ -52,85 +56,77 @@ def _model_from_parsed(parsed: dict, raw: str, mobile: str, kind: str, sid: str 
     )
 
 
-def query_archive(filters: dict, days: int | None, sender: str | None) -> list[dict]:
-    qs = WhatsappEstateMessage.objects.filter(
-        message_kind__in=(WhatsappEstateMessage.KIND_SAVE, WhatsappEstateMessage.KIND_ADD)
-    )
-    if days:
-        qs = qs.filter(created_at__gte=timezone.now() - timedelta(days=days))
-    if sender:
-        qs = qs.filter(sender_mobile=sender)
-
-    if filters.get("area"):
-        qs = qs.filter(area__icontains=filters["area"])
-    if filters.get("estate_type"):
-        qs = qs.filter(estate_type__icontains=filters["estate_type"])
-    if filters.get("estate_status"):
-        qs = qs.filter(estate_status__icontains=filters["estate_status"])
-    if filters.get("number_of_bedrooms"):
-        qs = qs.filter(number_of_bedrooms=filters["number_of_bedrooms"])
-    if filters.get("budget"):
-        qs = qs.filter(budget__lte=filters["budget"])
-
-    limit = settings.QUERY_MAX_RESULTS
-    return [row.extracted_json for row in qs[:limit]]
-
-
 def handle_inbound(from_mobile: str, body: str, twilio_sid: str = "") -> str:
     if from_mobile not in settings.FAMILY_ALLOWED_MOBILES:
         return WHITELIST_MSG
 
-    remainder, command = strip_command_prefix(body)
+    parsed_intent = detect_intent(body)
+    intent = parsed_intent.intent
+    remainder = parsed_intent.remainder
 
-    if command == "greet":
+    if intent == Intent.GREET:
         return WELCOME_TEXT
 
-    if command == "help":
+    if intent == Intent.HELP:
         return HELP_TEXT
 
-    if command in ("leads", "pending"):
+    if intent == Intent.LIST:
         return format_my_leads(from_mobile)
 
-    if command == "assign":
+    if intent == Intent.ASSIGN:
         return assign_lead(from_mobile, remainder)
 
-    if command == "done":
-        parts = remainder.strip().split()
-        if parts and parts[0].isdigit():
-            return complete_lead(from_mobile, int(parts[0]))
-        return complete_lead(from_mobile, None)
+    if intent == Intent.DONE:
+        lid = parsed_intent.diary_number
+        return complete_lead(from_mobile, lid)
 
-    if command == "query":
-        filters = parse_estate_message(remainder, from_mobile) or {}
-        days = parse_query_days(remainder)
-        if not filters and not days:
+    if intent == Intent.SEARCH:
+        # Poora message — warna "buyer ke liye / kharidar dhundo" ka mode kho jata hai
+        q = body.strip()
+        days = parse_query_days(q)
+        if len(q.split()) < 2 and not days:
             return QUERY_PARSE_FAIL
-        rows = query_archive(filters, days, sender=None)
+        mode, rows = search_listings(q, days)
         if not rows:
-            return QUERY_EMPTY
-        return QUERY_OK_PREFIX + format_estate_list(rows, settings.QUERY_MAX_RESULTS)
+            empty_map = {
+                SearchMode.DEMAND: QUERY_EMPTY_DEMAND,
+                SearchMode.STOCK: QUERY_EMPTY_STOCK,
+                SearchMode.RENT_STOCK: QUERY_EMPTY_RENT_STOCK,
+                SearchMode.RENT_DEMAND: QUERY_EMPTY_RENT_DEMAND,
+            }
+            return empty_map.get(mode, QUERY_EMPTY)
+        prefix_map = {
+            SearchMode.DEMAND: QUERY_OK_DEMAND,
+            SearchMode.STOCK: QUERY_OK_STOCK,
+            SearchMode.RENT_STOCK: QUERY_OK_RENT_STOCK,
+            SearchMode.RENT_DEMAND: QUERY_OK_RENT_DEMAND,
+        }
+        prefix = prefix_map.get(mode, QUERY_OK_PREFIX)
+        return prefix + format_estate_list(rows, settings.QUERY_MAX_RESULTS)
 
-    if command == "add":
-        items = parse_multi_estate(remainder, from_mobile)
+    if intent == Intent.MULTI_SAVE:
+        items = parse_multi_estate(remainder or body, from_mobile)
         if not items:
             return REJECT_MSG
+        chunks = []
         for item in items:
-            listing = _model_from_parsed(item, remainder, from_mobile, WhatsappEstateMessage.KIND_ADD, twilio_sid)
-            create_lead_from_listing(listing, item, from_mobile)
-        return ADD_OK_PREFIX.format(count=len(items)) + format_estate_list(items, min(3, len(items)))
+            listing = _model_from_parsed(
+                item, remainder or body, from_mobile, WhatsappEstateMessage.KIND_ADD, twilio_sid
+            )
+            lead, dup = create_lead_from_listing(listing, item, from_mobile)
+            chunks.append(save_reply_with_lead(lead, dup))
+        if len(items) == 1:
+            return chunks[0]
+        return ADD_OK_PREFIX.format(count=len(items)) + "\n---\n".join(chunks[:3])
 
-    if command == "followup":
-        due, note = parse_followup_note(remainder)
+    if intent == Intent.REMIND:
+        due, note = parse_followup_note(remainder or body)
         if not due:
             return "Kab yaad dilana hai? Jaise:\n*yaad kal sham broker ko phone*"
-        lead = (
-            LeadRecord.objects.filter(assignee_mobile=from_mobile, status=LeadRecord.STATUS_OPEN)
-            .order_by("-created_at")
-            .first()
-        )
+        lead = resolve_lead_for_reminder(from_mobile)
         if not lead:
             return "Pehle koi property ka message bhejo, phir yaad set karenge."
-        schedule_lead_action(lead, due, note)
+        schedule_lead_action(lead, due, note, from_mobile)
         return (
             f"✅ Theek hai ji.\n"
             f"Diary no. {lead.id} — {due:%d/%m %H:%M} ko yaad dilaaunga.\n"
@@ -138,13 +134,25 @@ def handle_inbound(from_mobile: str, body: str, twilio_sid: str = "") -> str:
             f"Subah-shaam wale message mein dikhega."
         )
 
-    parsed = parse_estate_message(body, from_mobile)
-    if not parsed:
-        return REJECT_MSG
+    if intent == Intent.SAVE:
+        text = remainder or body
+        estate = parse_estate_message(text, from_mobile)
+        if not estate:
+            return REJECT_MSG
+        # Search-style sentence SAVE par mat aaye
+        from inbox.message_classify import is_explicit_search
 
-    listing = _model_from_parsed(parsed, body, from_mobile, WhatsappEstateMessage.KIND_SAVE, twilio_sid)
-    lead = create_lead_from_listing(listing, parsed, from_mobile)
-    return save_reply_with_lead(lead)
+        if is_explicit_search(body):
+            mode, rows = search_listings(body.strip(), parse_query_days(body))
+            if rows:
+                prefix = QUERY_OK_STOCK
+                return prefix + format_estate_list(rows, settings.QUERY_MAX_RESULTS)
+            return QUERY_EMPTY_STOCK
+        listing = _model_from_parsed(estate, body, from_mobile, WhatsappEstateMessage.KIND_SAVE, twilio_sid)
+        lead, dup = create_lead_from_listing(listing, estate, from_mobile)
+        return save_reply_with_lead(lead, dup)
+
+    return REJECT_MSG
 
 
 def process_and_reply(from_mobile: str, body: str, twilio_sid: str = "") -> None:

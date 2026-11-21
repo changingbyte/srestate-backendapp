@@ -149,11 +149,19 @@ def parse_multi_estate(body: str, sender_mobile: str) -> list[dict]:
 
 
 def parse_query_days(body: str) -> int | None:
-    m = re.search(r"last\s+(\d+)\s+days?", body.lower())
+    lower = body.lower()
+    m = re.search(r"last\s+(\d+)\s+days?", lower)
     if m:
         return int(m.group(1))
-    if "last month" in body.lower():
+    if "last month" in lower:
         return 30
+    m = re.search(r"pichle\s+(\d+)\s*din", lower)
+    if m:
+        return int(m.group(1))
+    if "pichle mahine" in lower or "pichla mahina" in lower:
+        return 30
+    if "is hafte" in lower or "is week" in lower:
+        return 7
     return None
 
 
@@ -200,7 +208,6 @@ _QUERY_PREFIXES = (
     "dhundo",
     "dhundho",
     "dhundhna",
-    "enquiry",
 )
 
 _ADD_PREFIXES = ("add", "jodo", "save karo", "save")
@@ -296,7 +303,7 @@ def strip_command_prefix(body: str) -> tuple[str, str | None]:
     for prefix in _DONE_PREFIXES:
         if lower.startswith(prefix + " "):
             return text[len(prefix) :].strip(), "done"
-        if lower == prefix:
-            return "", "leads"
+        if lower == prefix and prefix in ("done", "ho gaya", "ho gya", "complete", "khatam"):
+            return "", "done"
 
     return text, None

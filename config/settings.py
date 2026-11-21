@@ -88,3 +88,4 @@ FAMILY_ALLOWED_MOBILES = [
 
 QUERY_MAX_RESULTS = int(os.environ.get("QUERY_MAX_RESULTS", "10"))
 LEXICON_PATH = BASE_DIR / "inbox" / "estate_lexicon.json"
+FAMILY_BRAND_NAME = os.environ.get("FAMILY_BRAND_NAME", "Shreeshyam Real Estate")

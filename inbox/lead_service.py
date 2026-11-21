@@ -5,6 +5,10 @@ import re
 from django.conf import settings
 from django.utils import timezone
 
+from datetime import timedelta
+
+from inbox.conversation import get_last_lead_id, touch_last_lead
+from inbox.lead_events import log_event
 from inbox.models import FamilyMember, LeadRecord, WhatsappEstateMessage
 from inbox.twilio_client import send_whatsapp
 
@@ -36,22 +40,54 @@ def build_summary(msg: WhatsappEstateMessage, parsed: dict) -> str:
     return " ".join(bits) if bits else msg.raw_body[:70] + "…"
 
 
+def find_recent_duplicate(parsed: dict, contact: str) -> LeadRecord | None:
+    if not contact and not parsed.get("area"):
+        return None
+    since = timezone.now() - timedelta(hours=48)
+    qs = LeadRecord.objects.filter(status=LeadRecord.STATUS_OPEN, created_at__gte=since)
+    if contact:
+        qs = qs.filter(contact_mobile=contact)
+    area = (parsed.get("area") or "").strip()
+    if area:
+        qs = qs.filter(summary__icontains=area[:40])
+    return qs.order_by("-created_at").first()
+
+
 def create_lead_from_listing(
     listing: WhatsappEstateMessage,
     parsed: dict,
     shared_by: str,
-) -> LeadRecord:
+) -> tuple[LeadRecord, LeadRecord | None]:
     contact = (parsed.get("broker_mobile") or listing.broker_mobile or "").replace(" ", "")[:10]
-    return LeadRecord.objects.create(
+    dup = find_recent_duplicate(parsed, contact)
+    lead = LeadRecord.objects.create(
         listing=listing,
         shared_by_mobile=shared_by,
         assignee_mobile=shared_by,
         contact_mobile=contact,
         summary=build_summary(listing, parsed),
     )
+    log_event(lead, "created", shared_by, lead.summary)
+    touch_last_lead(shared_by, lead.id)
+    if dup and dup.id != lead.id:
+        log_event(lead, "duplicate_warn", shared_by, f"similar to #{dup.id}")
+    return lead, dup
 
 
-def save_reply_with_lead(lead: LeadRecord) -> str:
+def _assign_hint_lines() -> list[str]:
+    names = [
+        m.name.strip()
+        for m in FamilyMember.objects.exclude(name="").order_by("name")
+        if m.name.strip()
+    ]
+    if not names:
+        return ["*de do naam ya 10-digit number*"]
+    hints = [f"• *de do {n.lower()}*" for n in names[:5]]
+    hints.append("• ya *de do 10-digit mobile*")
+    return hints
+
+
+def save_reply_with_lead(lead: LeadRecord, duplicate: LeadRecord | None = None) -> str:
     lines = [
         "✅ *Theek hai ji, maine yaad kar liya.*",
         "",
@@ -60,10 +96,16 @@ def save_reply_with_lead(lead: LeadRecord) -> str:
     if lead.contact_mobile:
         lines.append(f"📞 Phone: {lead.contact_mobile}")
     lines.append(f"📝 Diary number: *{lead.id}* (baad mein kaam aayega)")
+    if duplicate:
+        lines.append("")
+        lines.append(
+            f"⚠️ *Dhyan:* pehle bhi similar (#{duplicate.id}) — double save ho sakta hai. "
+            f"Same ho to *ho gaya {lead.id}* likh kar hata dena."
+        )
     lines.append("")
-    lines.append("Kisi aur ko dena ho to likho:")
-    lines.append("*de do 9328059281* (ya member ka naam)")
-    lines.append("Aaj ka kaam dekho: *meri list*")
+    lines.append("Kisi aur ko dena ho:")
+    lines.extend(_assign_hint_lines())
+    lines.append("Aaj ka kaam: *meri list*")
     return "\n".join(lines)
 
 
@@ -103,14 +145,23 @@ def assign_lead(actor_mobile: str, remainder: str) -> str:
         except LeadRecord.DoesNotExist:
             return f"Diary number {lead_id} nahi mila."
     else:
-        lead = (
-            LeadRecord.objects.filter(
-                shared_by_mobile=actor_mobile,
-                status=LeadRecord.STATUS_OPEN,
+        last_id = get_last_lead_id(actor_mobile)
+        if last_id:
+            try:
+                lead = LeadRecord.objects.get(id=last_id, status=LeadRecord.STATUS_OPEN)
+            except LeadRecord.DoesNotExist:
+                lead = None
+        else:
+            lead = None
+        if not lead:
+            lead = (
+                LeadRecord.objects.filter(
+                    shared_by_mobile=actor_mobile,
+                    status=LeadRecord.STATUS_OPEN,
+                )
+                .order_by("-created_at")
+                .first()
             )
-            .order_by("-created_at")
-            .first()
-        )
         if not lead:
             lead = LeadRecord.objects.filter(status=LeadRecord.STATUS_OPEN).order_by("-created_at").first()
         if not lead:
@@ -118,6 +169,9 @@ def assign_lead(actor_mobile: str, remainder: str) -> str:
 
     lead.assignee_mobile = target
     lead.save(update_fields=["assignee_mobile"])
+    log_event(lead, "assigned", actor_mobile, f"→ {_member_label(target)}")
+    touch_last_lead(actor_mobile, lead.id)
+    touch_last_lead(target, lead.id)
     to_name = _member_label(target)
     from_name = _member_label(lead.shared_by_mobile)
     send_whatsapp(
@@ -136,11 +190,24 @@ def assign_lead(actor_mobile: str, remainder: str) -> str:
 
 def complete_lead(actor_mobile: str, lead_id: int | None) -> str:
     if lead_id is None:
-        lead = (
-            LeadRecord.objects.filter(assignee_mobile=actor_mobile, status=LeadRecord.STATUS_OPEN)
-            .order_by("-created_at")
-            .first()
-        )
+        last_id = get_last_lead_id(actor_mobile)
+        lead = None
+        if last_id:
+            try:
+                lead = LeadRecord.objects.get(
+                    id=last_id,
+                    status=LeadRecord.STATUS_OPEN,
+                )
+                if lead.assignee_mobile != actor_mobile and lead.shared_by_mobile != actor_mobile:
+                    lead = None
+            except LeadRecord.DoesNotExist:
+                lead = None
+        if not lead:
+            lead = (
+                LeadRecord.objects.filter(assignee_mobile=actor_mobile, status=LeadRecord.STATUS_OPEN)
+                .order_by("-created_at")
+                .first()
+            )
         if not lead:
             return "Koi pending kaam nahi dikhta. Shukriya!"
     else:
@@ -155,6 +222,8 @@ def complete_lead(actor_mobile: str, lead_id: int | None) -> str:
     lead.status = LeadRecord.STATUS_DONE
     lead.completed_at = timezone.now()
     lead.save(update_fields=["status", "completed_at"])
+    log_event(lead, "done", actor_mobile, "")
+    touch_last_lead(actor_mobile, lead.id)
     if lead.shared_by_mobile != actor_mobile:
         send_whatsapp(
             lead.shared_by_mobile,
@@ -199,47 +268,17 @@ def format_my_leads(mobile: str) -> str:
 
 
 def send_care_message(mobile: str, slot: str) -> bool:
-    now = timezone.localtime()
-    open_mine = LeadRecord.objects.filter(
-        assignee_mobile=mobile,
-        status=LeadRecord.STATUS_OPEN,
-    ).order_by("next_action_at", "-created_at")[:5]
+    from inbox.family_digest import build_group_care_message
 
-    if slot == "morning":
-        title = f"☀️ *Subah ki namaste* — {now:%d %b}"
-        closing = "Shaam ko ek chhota sa message aur aayega. Property paste karte raho."
-    else:
-        title = f"🌆 *Shaam ka haal* — {now:%d %b}"
-        closing = "Ho chuka ho to *ho gaya* likh dena. Kal subah phir mileinge."
-
-    lines = [title, ""]
-
-    if open_mine:
-        lines.append("*Aaj yeh yaad rakho:*")
-        for L in open_mine:
-            who = _member_label(L.shared_by_mobile)
-            phone = L.contact_mobile or "—"
-            lines.append(f"• {L.summary}")
-            lines.append(f"  No. {L.id} | {who} ne bheji | 📞 {phone}")
-            if L.action_note:
-                lines.append(f"  Yaad: {L.action_note}")
-    else:
-        lines.append("Aaj koi pending property kaam nahi — naya message aaye to yahi bhej dena.")
-
-    new_today = WhatsappEstateMessage.objects.filter(
-        created_at__date=now.date(),
-        sender_mobile=mobile,
-    ).count()
-    if new_today:
-        lines.append(f"\nAaj aapne *{new_today}* property save karwai.")
-
-    lines.append("")
-    lines.append(closing)
-    lines.append("*meri list* — poori diary")
-
-    ok, _ = send_whatsapp(mobile, "\n".join(lines))
-    if ok and open_mine:
-        LeadRecord.objects.filter(id__in=[L.id for L in open_mine]).update(last_nudge=slot)
+    body = build_group_care_message(slot, mobile)
+    ok, _ = send_whatsapp(mobile, body)
+    if ok:
+        open_mine = LeadRecord.objects.filter(
+            assignee_mobile=mobile,
+            status=LeadRecord.STATUS_OPEN,
+        )[:5]
+        if open_mine:
+            LeadRecord.objects.filter(id__in=[L.id for L in open_mine]).update(last_nudge=slot)
     return ok
 
 
@@ -251,7 +290,25 @@ def send_twice_daily_care(slot: str) -> int:
     return count
 
 
-def schedule_lead_action(lead: LeadRecord, due_at, note: str) -> None:
+def schedule_lead_action(lead: LeadRecord, due_at, note: str, actor_mobile: str = "") -> None:
     lead.next_action_at = due_at
     lead.action_note = note[:255]
     lead.save(update_fields=["next_action_at", "action_note"])
+    log_event(lead, "reminder", actor_mobile, note[:200])
+
+
+def resolve_lead_for_reminder(actor_mobile: str) -> LeadRecord | None:
+    last_id = get_last_lead_id(actor_mobile)
+    if last_id:
+        try:
+            return LeadRecord.objects.get(
+                id=last_id,
+                status=LeadRecord.STATUS_OPEN,
+            )
+        except LeadRecord.DoesNotExist:
+            pass
+    return (
+        LeadRecord.objects.filter(assignee_mobile=actor_mobile, status=LeadRecord.STATUS_OPEN)
+        .order_by("-created_at")
+        .first()
+    )
