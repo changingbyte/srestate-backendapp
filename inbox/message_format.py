@@ -1,16 +1,16 @@
 """Format parsed estate dicts for WhatsApp (aligned with legacy MSG_MAPPING)."""
 
 MSG_MAPPING = {
-    "floor_space": "FLOOR SPACE IS",
-    "number_of_bedrooms": "BEDROOMS",
-    "estate_type": "TYPE",
-    "estate_status": "STATUS",
-    "area": "AREA",
-    "budget": "BUDGET",
-    "apartment": "SOCIETY",
-    "broker_mobile": "CONTACT",
-    "furniture": "FURNITURE",
-    "rent_status": "RENT STATUS",
+    "floor_space": "Carpet / size",
+    "number_of_bedrooms": "BHK",
+    "estate_type": "Property type",
+    "estate_status": "Rent / buy",
+    "area": "Area",
+    "budget": "Budget",
+    "apartment": "Society",
+    "broker_mobile": "Contact",
+    "furniture": "Furniture",
+    "rent_status": "Rent status",
 }
 
 
@@ -27,7 +27,7 @@ def format_estate_bullet(parsed: dict) -> str:
         if val not in (None, "", [], 0, "0"):
             lines.append(f"{label}: {val}")
     if not lines:
-        return "(no structured fields)"
+        return "(koi field parse nahi hui — raw message save hai)"
     return "\n".join(lines)
 
 
@@ -36,5 +36,5 @@ def format_estate_list(items: list[dict], max_items: int = 10) -> str:
     for i, item in enumerate(items[:max_items], start=1):
         parts.append(f"*{i}.*\n{format_estate_bullet(item)}")
     if len(items) > max_items:
-        parts.append(f"... and {len(items) - max_items} more")
+        parts.append(f"... aur {len(items) - max_items} listings baaki hain")
     return "\n\n".join(parts)

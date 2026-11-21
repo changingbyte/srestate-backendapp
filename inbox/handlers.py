@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from datetime import timedelta
+
 from django.conf import settings
 from django.utils import timezone
-from datetime import timedelta
 
 from inbox.estate_parser import (
     parse_estate_message,
@@ -13,21 +14,17 @@ from inbox.estate_parser import (
 from inbox.message_format import format_estate_bullet, format_estate_list
 from inbox.models import WhatsappEstateMessage
 from inbox.twilio_client import send_whatsapp
-
-REJECT_MSG = (
-    "Only property messages supported.\n"
-    "Send listing details (area, BHK, budget, rent/buy) or use:\n"
-    "*help* — commands\n*query …* — search saved listings\n*add* — multiline listings"
+from inbox.user_messages import (
+    ADD_OK_PREFIX,
+    HELP_TEXT,
+    QUERY_EMPTY,
+    QUERY_OK_PREFIX,
+    QUERY_PARSE_FAIL,
+    REJECT_MSG,
+    SAVE_OK,
+    WELCOME_TEXT,
+    WHITELIST_MSG,
 )
-
-HELP_TEXT = """*Family estate bot (real estate only)*
-
-*save* — paste any listing message
-*query 3bhk adajan rent* — search your archive
-*query flat vesu last 30 days*
-*add* then blank line separated listings
-
-Edit areas/types in inbox/estate_lexicon.json"""
 
 
 def _model_from_parsed(parsed: dict, raw: str, mobile: str, kind: str, sid: str = "") -> WhatsappEstateMessage:
@@ -48,7 +45,9 @@ def _model_from_parsed(parsed: dict, raw: str, mobile: str, kind: str, sid: str 
 
 
 def query_archive(filters: dict, days: int | None, sender: str | None) -> list[dict]:
-    qs = WhatsappEstateMessage.objects.filter(message_kind__in=(WhatsappEstateMessage.KIND_SAVE, WhatsappEstateMessage.KIND_ADD))
+    qs = WhatsappEstateMessage.objects.filter(
+        message_kind__in=(WhatsappEstateMessage.KIND_SAVE, WhatsappEstateMessage.KIND_ADD)
+    )
     if days:
         qs = qs.filter(created_at__gte=timezone.now() - timedelta(days=days))
     if sender:
@@ -71,9 +70,12 @@ def query_archive(filters: dict, days: int | None, sender: str | None) -> list[d
 
 def handle_inbound(from_mobile: str, body: str, twilio_sid: str = "") -> str:
     if from_mobile not in settings.FAMILY_ALLOWED_MOBILES:
-        return "This number is not on the family whitelist."
+        return WHITELIST_MSG
 
     remainder, command = strip_command_prefix(body)
+
+    if command == "greet":
+        return WELCOME_TEXT
 
     if command == "help":
         return HELP_TEXT
@@ -82,11 +84,11 @@ def handle_inbound(from_mobile: str, body: str, twilio_sid: str = "") -> str:
         filters = parse_estate_message(remainder, from_mobile) or {}
         days = parse_query_days(remainder)
         if not filters and not days:
-            return "Could not read a property query. Example: *query 3bhk adajan rent*"
+            return QUERY_PARSE_FAIL
         rows = query_archive(filters, days, sender=None)
         if not rows:
-            return "No matching listings in archive."
-        return format_estate_list(rows, settings.QUERY_MAX_RESULTS)
+            return QUERY_EMPTY
+        return QUERY_OK_PREFIX + format_estate_list(rows, settings.QUERY_MAX_RESULTS)
 
     if command == "add":
         items = parse_multi_estate(remainder, from_mobile)
@@ -94,14 +96,14 @@ def handle_inbound(from_mobile: str, body: str, twilio_sid: str = "") -> str:
             return REJECT_MSG
         for item in items:
             _model_from_parsed(item, remainder, from_mobile, WhatsappEstateMessage.KIND_ADD, twilio_sid)
-        return f"Added {len(items)} listing(s).\n\n" + format_estate_list(items, min(3, len(items)))
+        return ADD_OK_PREFIX.format(count=len(items)) + format_estate_list(items, min(3, len(items)))
 
     parsed = parse_estate_message(body, from_mobile)
     if not parsed:
         return REJECT_MSG
 
     _model_from_parsed(parsed, body, from_mobile, WhatsappEstateMessage.KIND_SAVE, twilio_sid)
-    return "Saved:\n" + format_estate_bullet(parsed)
+    return SAVE_OK + format_estate_bullet(parsed)
 
 
 def process_and_reply(from_mobile: str, body: str, twilio_sid: str = "") -> None:

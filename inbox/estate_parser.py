@@ -157,14 +157,92 @@ def parse_query_days(body: str) -> int | None:
     return None
 
 
+_HELP_WORDS = frozenset(
+    {
+        "help",
+        "madad",
+        "madat",
+        "guide",
+        "sahayata",
+        "sahaayata",
+        "kaise",
+        "kese",
+        "commands",
+    }
+)
+
+_GREETINGS = frozenset(
+    {
+        "hi",
+        "hii",
+        "hey",
+        "hello",
+        "hola",
+        "namaste",
+        "namaskar",
+        "good morning",
+        "good evening",
+        "good afternoon",
+        "gm",
+        "kaise ho",
+        "kese ho",
+    }
+)
+
+_QUERY_PREFIXES = ("query", "search", "find", "dhoondo", "dhundo", "khojo", "enquiry")
+
+_ADD_PREFIXES = ("add", "jodo", "save karo", "save")
+
+
+def is_greeting_only(body: str) -> bool:
+    text = body.strip().lower().rstrip("!?.。 ")
+    if text in _GREETINGS:
+        return True
+    for g in ("good morning", "good evening", "good afternoon"):
+        if text == g or text.startswith(g + " "):
+            return True
+    return False
+
+
+def wants_help(body: str) -> bool:
+    lower = body.strip().lower()
+    if lower in _HELP_WORDS:
+        return True
+    hints = (
+        "save kaise",
+        "kaise save",
+        "enquiry kaise",
+        "kaise daalu",
+        "kaise dale",
+        "listing kaise",
+        "kya likhu",
+        "kya likhe",
+    )
+    return any(h in lower for h in hints)
+
+
 def strip_command_prefix(body: str) -> tuple[str, str | None]:
-    """Returns (remainder, command) where command is query|add|help or None."""
+    """Returns (remainder, command) where command is query|add|help|greet or None."""
     text = body.strip()
     lower = text.lower()
-    if lower == "help":
+
+    if is_greeting_only(text):
+        return "", "greet"
+    if lower in _HELP_WORDS or wants_help(text):
         return "", "help"
-    if lower.startswith("query"):
-        return text[5:].strip(), "query"
-    if lower.startswith("add"):
-        return text[3:].strip(), "add"
+
+    for prefix in _QUERY_PREFIXES:
+        if lower == prefix:
+            return "", "query"
+        if lower.startswith(prefix + " "):
+            return text[len(prefix) :].strip(), "query"
+
+    for prefix in _ADD_PREFIXES:
+        if lower == prefix:
+            return "", "add"
+        if lower.startswith(prefix + " "):
+            return text[len(prefix) :].strip(), "add"
+        if lower.startswith(prefix + "\n"):
+            return text[len(prefix) :].strip(), "add"
+
     return text, None
