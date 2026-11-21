@@ -21,6 +21,9 @@ class Intent(Enum):
     GREET = "greet"
     HELP = "help"
     LIST = "list"
+    TEAM = "team"
+    ADMIN_REMOVE = "admin_remove"
+    ADMIN_ADD = "admin_add"
     SEARCH = "search"
     ASSIGN = "assign"
     DONE = "done"
@@ -66,6 +69,9 @@ _LIST_RE = re.compile(
     r"(?:^|\s)(?:meri\s+list|mera\s+kaam|kya\s+bacha|aaj\s+ka\s+kaam|meri\s+enquiry|meri\s+leads|pending)(?:\s|$)",
     re.I,
 )
+_TEAM_RE = re.compile(r"^(?:team|parivar|family)\s*$", re.I)
+_ADMIN_REMOVE_RE = re.compile(r"^(?:hatado|remove|nikalo)\s+(.+)$", re.I)
+_ADMIN_ADD_RE = re.compile(r"^(?:jodo|add\s+member?)\s+(\d{10}\s+.+)$", re.I)
 _REMIND_RE = re.compile(
     r"(?:^|\s)(?:yaad|yaad\s*dilao|kal\s+phone|reminder|followup)\s+(.+)$",
     re.I,
@@ -98,6 +104,17 @@ def detect_intent(body: str) -> ParsedIntent:
     m = _LIST_RE.search(lower)
     if m:
         return ParsedIntent(Intent.LIST, "")
+
+    if _TEAM_RE.match(text):
+        return ParsedIntent(Intent.TEAM, "")
+
+    m = _ADMIN_REMOVE_RE.match(text)
+    if m:
+        return ParsedIntent(Intent.ADMIN_REMOVE, m.group(1).strip())
+
+    m = _ADMIN_ADD_RE.match(text)
+    if m:
+        return ParsedIntent(Intent.ADMIN_ADD, m.group(1).strip())
 
     m = _DONE_RE.match(text) or _DONE_INLINE_RE.search(text)
     if m:

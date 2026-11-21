@@ -1,20 +1,13 @@
-from django.conf import settings
 from django.core.management.base import BaseCommand
 
-from inbox.models import FamilyMember
+from inbox.family_access import DEFAULT_ROSTER, ensure_roster
 
 
 class Command(BaseCommand):
-    help = "Create FamilyMember rows from FAMILY_ALLOWED_MOBILES"
+    help = "JP / Jitendra operators + Prince admin + testers — fixed roster"
 
     def handle(self, *args, **options):
-        for mobile in settings.FAMILY_ALLOWED_MOBILES:
-            obj, created = FamilyMember.objects.get_or_create(
-                mobile=mobile,
-                defaults={"name": f"Member {mobile[-4:]}"},
-            )
-            flag = "created" if created else "exists"
-            self.stdout.write(f"{mobile}: {flag}")
-        self.stdout.write(
-            "Tip: Admin mein naam set karo — `assign rahul` kaam karega."
-        )
+        ensure_roster()
+        for mobile, name, role in DEFAULT_ROSTER:
+            self.stdout.write(f"{mobile}: {name} ({role})")
+        self.stdout.write(self.style.SUCCESS("Roster OK — migrate + reload on PA."))

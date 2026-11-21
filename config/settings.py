@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+import sys
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -10,6 +11,7 @@ try:
 except ImportError:
     pass
 
+TESTING = "test" in sys.argv
 SECRET_KEY = os.environ.get("SECRET_KEY", "dev-only-change-in-production")
 DEBUG = os.environ.get("DEBUG", "True").lower() in ("1", "true", "yes")
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")

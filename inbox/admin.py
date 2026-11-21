@@ -12,7 +12,8 @@ from inbox.models import (
 
 @admin.register(FamilyMember)
 class FamilyMemberAdmin(admin.ModelAdmin):
-    list_display = ("name", "mobile", "is_active")
+    list_display = ("name", "mobile", "role", "is_active")
+    list_filter = ("role", "is_active")
     search_fields = ("name", "mobile")
 
 

@@ -11,6 +11,9 @@ def normalize_whatsapp_from(twilio_from: str) -> str:
 
 
 def send_whatsapp(mobile: str, body: str) -> tuple[bool, str]:
+    # Tests must never hit Twilio (real family numbers).
+    if getattr(settings, "TESTING", False):
+        return True, "test-skipped"
     if not settings.TWILIO_ACCOUNT_SID or not settings.TWILIO_AUTH_TOKEN:
         return False, "Twilio not configured"
     if len(body) > 1500:

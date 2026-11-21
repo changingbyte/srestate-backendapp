@@ -5,6 +5,8 @@ from django.conf import settings
 from inbox.estate_parser import parse_estate_message, parse_multi_estate, parse_query_days
 from inbox.followup_parser import parse_followup_note
 from inbox.intent import Intent, detect_intent
+from inbox.family_access import is_family_allowed
+from inbox.family_admin import handle_add_member, handle_remove_member, handle_team
 from inbox.lead_service import (
     assign_lead,
     complete_lead,
@@ -57,7 +59,7 @@ def _model_from_parsed(parsed: dict, raw: str, mobile: str, kind: str, sid: str 
 
 
 def handle_inbound(from_mobile: str, body: str, twilio_sid: str = "") -> str:
-    if from_mobile not in settings.FAMILY_ALLOWED_MOBILES:
+    if not is_family_allowed(from_mobile):
         return WHITELIST_MSG
 
     parsed_intent = detect_intent(body)
@@ -72,6 +74,15 @@ def handle_inbound(from_mobile: str, body: str, twilio_sid: str = "") -> str:
 
     if intent == Intent.LIST:
         return format_my_leads(from_mobile)
+
+    if intent == Intent.TEAM:
+        return handle_team(from_mobile)
+
+    if intent == Intent.ADMIN_REMOVE:
+        return handle_remove_member(from_mobile, remainder)
+
+    if intent == Intent.ADMIN_ADD:
+        return handle_add_member(from_mobile, remainder)
 
     if intent == Intent.ASSIGN:
         return assign_lead(from_mobile, remainder)
@@ -105,7 +116,7 @@ def handle_inbound(from_mobile: str, body: str, twilio_sid: str = "") -> str:
         return prefix + format_estate_list(rows, settings.QUERY_MAX_RESULTS)
 
     if intent == Intent.MULTI_SAVE:
-        items = parse_multi_estate(remainder or body, from_mobile)
+        items = parse_multi_estate(remainder or body, "")
         if not items:
             return REJECT_MSG
         chunks = []
@@ -136,7 +147,7 @@ def handle_inbound(from_mobile: str, body: str, twilio_sid: str = "") -> str:
 
     if intent == Intent.SAVE:
         text = remainder or body
-        estate = parse_estate_message(text, from_mobile)
+        estate = parse_estate_message(text, "")
         if not estate:
             return REJECT_MSG
         # Search-style sentence SAVE par mat aaye

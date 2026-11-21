@@ -8,16 +8,14 @@ from django.utils import timezone
 from datetime import timedelta
 
 from inbox.conversation import get_last_lead_id, touch_last_lead
+from inbox.family_access import member_label, pick_operator_assignee
 from inbox.lead_events import log_event
 from inbox.models import FamilyMember, LeadRecord, WhatsappEstateMessage
 from inbox.twilio_client import send_whatsapp
 
 
 def _member_label(mobile: str) -> str:
-    m = FamilyMember.objects.filter(mobile=mobile).first()
-    if m and m.name.strip():
-        return m.name.strip()
-    return f"number …{mobile[-4:]}"
+    return member_label(mobile)
 
 
 def build_summary(msg: WhatsappEstateMessage, parsed: dict) -> str:
@@ -60,15 +58,29 @@ def create_lead_from_listing(
 ) -> tuple[LeadRecord, LeadRecord | None]:
     contact = (parsed.get("broker_mobile") or listing.broker_mobile or "").replace(" ", "")[:10]
     dup = find_recent_duplicate(parsed, contact)
+    assignee = pick_operator_assignee(exclude=None)
     lead = LeadRecord.objects.create(
         listing=listing,
         shared_by_mobile=shared_by,
-        assignee_mobile=shared_by,
+        assignee_mobile=assignee,
         contact_mobile=contact,
         summary=build_summary(listing, parsed),
     )
     log_event(lead, "created", shared_by, lead.summary)
+    log_event(lead, "assigned", "system", f"auto → {member_label(assignee)}")
     touch_last_lead(shared_by, lead.id)
+    touch_last_lead(assignee, lead.id)
+    if assignee != shared_by:
+        send_whatsapp(
+            assignee,
+            (
+                f"*Naya kaam — {member_label(shared_by)} ne bheja*\n\n"
+                f"{lead.summary}\n"
+                f"📞 {contact or 'message dekho'}\n"
+                f"Diary no. {lead.id}\n\n"
+                f"Ho jaye to: *ho gaya {lead.id}*"
+            ),
+        )
     if dup and dup.id != lead.id:
         log_event(lead, "duplicate_warn", shared_by, f"similar to #{dup.id}")
     return lead, dup
@@ -88,31 +100,34 @@ def _assign_hint_lines() -> list[str]:
 
 
 def save_reply_with_lead(lead: LeadRecord, duplicate: LeadRecord | None = None) -> str:
+    who = member_label(lead.assignee_mobile)
     lines = [
-        "✅ *Theek hai ji, maine yaad kar liya.*",
+        "✅ *Save ho gaya.*",
         "",
         f"*{lead.summary}*",
+        f"👤 Kaam → *{who}* (auto)",
     ]
     if lead.contact_mobile:
         lines.append(f"📞 Phone: {lead.contact_mobile}")
-    lines.append(f"📝 Diary number: *{lead.id}* (baad mein kaam aayega)")
+    lines.append(f"📝 Diary no. *{lead.id}*")
     if duplicate:
         lines.append("")
         lines.append(
             f"⚠️ *Dhyan:* pehle bhi similar (#{duplicate.id}) — double save ho sakta hai. "
             f"Same ho to *ho gaya {lead.id}* likh kar hata dena."
         )
-    lines.append("")
-    lines.append("Kisi aur ko dena ho:")
-    lines.extend(_assign_hint_lines())
-    lines.append("Aaj ka kaam: *meri list*")
+    if lead.assignee_mobile != lead.shared_by_mobile:
+        lines.append("_Aur kisi ko dena ho: *de do naam*_")
+    lines.append("*meri list* — aaj kya bacha")
     return "\n".join(lines)
 
 
 def resolve_family_mobile(token: str) -> str | None:
     token = token.strip().lower()
     if re.fullmatch(r"\d{10}", token):
-        if token in settings.FAMILY_ALLOWED_MOBILES:
+        from inbox.family_access import is_family_allowed
+
+        if is_family_allowed(token):
             return token
         return None
     member = FamilyMember.objects.filter(name__icontains=token).first()

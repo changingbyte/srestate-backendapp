@@ -2,8 +2,18 @@ from django.db import models
 
 
 class FamilyMember(models.Model):
+    ROLE_SUPER_ADMIN = "super_admin"
+    ROLE_OPERATOR = "operator"
+    ROLE_TESTER = "tester"
+    ROLE_CHOICES = (
+        (ROLE_SUPER_ADMIN, "Super admin"),
+        (ROLE_OPERATOR, "Operator"),
+        (ROLE_TESTER, "Tester"),
+    )
+
     name = models.CharField(max_length=64)
     mobile = models.CharField(max_length=10, unique=True)
+    role = models.CharField(max_length=16, default=ROLE_TESTER, choices=ROLE_CHOICES)
     is_active = models.BooleanField(default=True)
 
     def __str__(self):

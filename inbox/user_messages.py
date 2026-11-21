@@ -1,108 +1,56 @@
-"""Seedhe, simple Hindi — bina technical shabd ke."""
+"""Seedhe, simple Hindi — family bot."""
 
-WELCOME_TEXT = """*Namaste ji!* 🙏
+WELCOME_TEXT = """*Namaste — Shreeshyam helper*
 
-Main ghar waalon ke liye property likhne- sumbhálné wala helper hoon.
+*3 kaam:*
+1) Broker message → copy-paste (*save*)
+2) Dhundhna → *Query 3bhk vesu*
+3) Buyer hai → *I have buyer 3bhk vesu* (save nahi)
 
-*Bas property ka jo message WhatsApp par aaya hai, yahan copy-paste kar dena.*
-Main yaad rakhunga — kisne bheja, kisko phone karna hai.
+*Naya save → JP / Jitendra par auto.*
 
-*Aap yeh bhi likh sakte ho:*
-• *meri list* — aaj kya kaam bacha hai
-• *khojo buyer ke liye 3bhk vesu* — client ko sale listings
-• *kharidar dhundo 3bhk vesu* — aap bech rahe ho to buyer enquiry
-• *kiraye par lena 3bhk vesu* — rehne ke liye rent flat
-• *tenant dhundo 3bhk vesu* — aap rent dena chahte ho
-• *khojo adajan 3bhk* — purani property dhundo
-• *de do 93…* — kaam kisi aur family member ko
-• *ho gaya* — phone / kaam ho chuka
+*meri list* | *madad* | *team*"""
 
-Subah aur shaam *sirf ek chhota sa message* aayega — baar-baar pareshan nahi.
+HELP_TEXT = """*Seedhi guide*
 
-Kuch samajh na aaye to *madad* likh dena."""
+*Save* — property paste / `Add …`
+*Dhundho* — `Query …` ya `I have buyer …`
+*List* — `meri list`
+*Ho gaya* — `ho gaya` ya `ho gaya 5`
+*Team* — `team` (Prince admin: `hatado naam` / `jodo 99… Naam`)
 
-HELP_TEXT = """*Aram se — 4 cheez yaad rakho:*
-
-*1) Save*
-Property ka poora message yahi bhej do. Khud hi likh liya jayega.
-
-*2) Client ko flat dikhana (aapke paas buyer hai)*
-`khojo buyer ke liye 3bhk vesu furnished`
-(ya seedha `buyer ke liye 3bhk vesu` — diary ki *sale* listings)
-
-*3) Aap bech rahe ho — kharidar dhundho*
-`kharidar dhundo 3bhk vesu`
-(diary mein *kharidi / requirement* wale message)
-
-*4) Rent par rehna (client ko rent flat)*
-`kiraye par lena 3bhk vesu furnished`
-(diary ki *kiraye par* listings)
-
-*5) Rent dena (tenant dhundo)*
-`tenant dhundo 3bhk vesu`
-ya `kiraye par dena — tenant chahiye`
-
-*6) Purana dhundhna (simple)*
-`khojo vesu rent` ya `dhundo 3bhk adajan`
-
-*7) Kisko dena hai*
-`de do 9328059281` (number)
-ya `de do rahul` (naam — admin ne naam set kiya ho)
-
-*8) Apna hisaab*
-`meri list` — kaunsi enquiry aap par hai, kisko aapne diya
-
-*Ho chuka?*
-`ho gaya` ya `ho gaya 3` (number list mein dikhta hai)
-
-Sirf property wali baat — baaki main nahi likhta.
-
-*English bhi chalega:*
-• *I have buyer for 3bhk vesu* — search (save nahi)
-• *Query / Add* se pehle likhna — save vs dhundh clear rehta hai."""
+Sale: `Query buy` = diary ki *sell* listings.
+Rent: `kiraye par lena …` | `tenant dhundo …`"""
 
 REJECT_MSG = (
-    "Lagta hai yeh property ki listing nahi hai.\n\n"
-    "Jaise likhte ho waise bhej do:\n"
-    "• 3 BHK Adajan rent 25000\n"
-    "• Vesu flat sell 85 lakh\n\n"
-    "Ya *madad* likh kar pooch lo."
+    "Yeh listing jaisi nahi lagi.\n"
+    "Jaise: *3 BHK Vesu sell 85 lakh*\n"
+    "Ya *madad*"
 )
 
-WHITELIST_MSG = "Yeh mobile number abhi family ki list mein nahi hai. Jisne bot lagaya hai unse number jodwa lein."
+WHITELIST_MSG = "Yeh number allowed nahi. Prince se team mein jodwa lein."
 
-QUERY_PARSE_FAIL = "Thoda aasaan likho, jaise:\n*khojo adajan 3 bhk rent*"
+QUERY_PARSE_FAIL = "Thoda detail likho: *Query 3bhk vesu sell*"
 
-QUERY_EMPTY = "Aisi property abhi diary mein nahi mili.\nPehle ek message save karo, phir khojo."
+QUERY_EMPTY = "Diary mein nahi mili. Pehle save, phir Query."
 
 QUERY_EMPTY_STOCK = (
-    "Abhi client ke liye matching *sale/rent* listing diary mein nahi.\n\n"
-    "Broker ka *for sale* message pehle save karo.\n"
-    "Phir: *khojo buyer ke liye 3bhk vesu*"
+    "Client ke liye listing nahi.\n"
+    "Pehle broker message *Add* karo."
 )
 
 QUERY_EMPTY_DEMAND = (
-    "Abhi aapke flat jaisi *kharidar enquiry* diary mein nahi.\n\n"
-    "Buyer ka requirement paste karke save karo.\n"
-    "Phir: *kharidar dhundo 3bhk vesu*"
+    "Kharidar enquiry nahi.\n"
+    "Buyer requirement save karo, phir *kharidar dhundo …*"
 )
 
 ADD_OK_PREFIX = "✅ {count} property save ho gayi:\n\n"
 
-QUERY_OK_PREFIX = "*Yeh mili hain:*\n\n"
-QUERY_OK_STOCK = "*Client ko dikhane ke liye (sale / rent par):*\n\n"
-QUERY_OK_DEMAND = "*Kharidne wale ki enquiry (aap bech rahe ho to yeh call karo):*\n\n"
-QUERY_OK_RENT_STOCK = "*Rehne ke liye (kiraye par mili listings):*\n\n"
-QUERY_OK_RENT_DEMAND = "*Tenant / kirayedar ki enquiry (aap rent dena chahte ho):*\n\n"
+QUERY_OK_PREFIX = "*Yeh mili:*\n\n"
+QUERY_OK_STOCK = "*Client ko (sale/rent):*\n\n"
+QUERY_OK_DEMAND = "*Kharidar enquiry:*\n\n"
+QUERY_OK_RENT_STOCK = "*Kiraye par rehne ke liye:*\n\n"
+QUERY_OK_RENT_DEMAND = "*Tenant chahiye:*\n\n"
 
-QUERY_EMPTY_RENT_STOCK = (
-    "Abhi *kiraye par* matching flat diary mein nahi.\n\n"
-    "Broker ka rent message save karo.\n"
-    "Phir: *kiraye par lena 3bhk vesu*"
-)
-
-QUERY_EMPTY_RENT_DEMAND = (
-    "Abhi *tenant* wali enquiry diary mein nahi.\n\n"
-    "Tenant required message save karo.\n"
-    "Phir: *tenant dhundo 3bhk vesu*"
-)
+QUERY_EMPTY_RENT_STOCK = "Rent listing nahi. Pehle save.\n*kiraye par lena 3bhk vesu*"
+QUERY_EMPTY_RENT_DEMAND = "Tenant enquiry nahi.\n*tenant dhundo 3bhk vesu*"
