@@ -16,6 +16,11 @@ Example:
 *Ek message mein kai listing:*
 Pehle `add` likhein, phir har listing ke beech khali line.
 
+*Follow-up roz:*
+`followup kal 5pm adajan broker call`
+`pending` — aaj ke kaam
+`done 3` — complete
+
 *Poori guide:* `help` ya `madad`"""
 
 HELP_TEXT = """*SR Estate — kaise use karein*
@@ -36,9 +41,19 @@ add
 2 bhk vesu sell 1.2 cr
 ```
 
-*4) Shuruat*
-`hi` — welcome
-`help` / `madad` — yeh message
+*4) Follow-up schedule*
+`followup kal sham 6 vesu client visit`
+`followup 25/11 10am pal broker`
+`pending` — list
+`done 5` — khatam
+
+*5) Roz auto (server)*
+Subah *daily report* WhatsApp pe
+Due time pe *reminder* WhatsApp pe
+(PythonAnywhere Tasks mein set hota hai)
+
+*6) Shuruat*
+`hi` / `help` / `madad`
 
 Sirf *real estate* — health/travel wagaira save nahi hoga."""
 

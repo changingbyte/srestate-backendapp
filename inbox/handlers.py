@@ -11,8 +11,10 @@ from inbox.estate_parser import (
     parse_query_days,
     strip_command_prefix,
 )
+from inbox.followup_parser import parse_followup_note
+from inbox.followup_service import format_pending_list
 from inbox.message_format import format_estate_bullet, format_estate_list
-from inbox.models import WhatsappEstateMessage
+from inbox.models import FollowUpTask, WhatsappEstateMessage
 from inbox.twilio_client import send_whatsapp
 from inbox.user_messages import (
     ADD_OK_PREFIX,
@@ -97,6 +99,47 @@ def handle_inbound(from_mobile: str, body: str, twilio_sid: str = "") -> str:
         for item in items:
             _model_from_parsed(item, remainder, from_mobile, WhatsappEstateMessage.KIND_ADD, twilio_sid)
         return ADD_OK_PREFIX.format(count=len(items)) + format_estate_list(items, min(3, len(items)))
+
+    if command == "followup":
+        due, note = parse_followup_note(remainder)
+        if not due:
+            return (
+                "Follow-up ki date/time samajh nahi aayi.\n"
+                "Example: `followup kal 5pm adajan broker ko call`"
+            )
+        task = FollowUpTask.objects.create(
+            owner_mobile=from_mobile,
+            note=note,
+            due_at=due,
+        )
+        return (
+            f"✅ *Follow-up set* (id {task.id})\n"
+            f"Kab: {due:%d/%m/%Y %H:%M}\n"
+            f"Kya: {note}\n\n"
+            f"List: `pending` | Done: `done {task.id}`"
+        )
+
+    if command == "pending":
+        tasks = FollowUpTask.objects.filter(
+            owner_mobile=from_mobile,
+            status=FollowUpTask.STATUS_PENDING,
+        ).order_by("due_at")[:15]
+        return format_pending_list(tasks)
+
+    if command == "done":
+        task_id = remainder.strip().split()[0] if remainder.strip() else ""
+        if not task_id.isdigit():
+            return "Example: `done 3` (pending list se id)"
+        try:
+            task = FollowUpTask.objects.get(
+                id=int(task_id),
+                owner_mobile=from_mobile,
+            )
+        except FollowUpTask.DoesNotExist:
+            return "Yeh follow-up id nahi mili."
+        task.status = FollowUpTask.STATUS_DONE
+        task.save(update_fields=["status"])
+        return f"✅ Follow-up #{task.id} complete mark ho gaya."
 
     parsed = parse_estate_message(body, from_mobile)
     if not parsed:

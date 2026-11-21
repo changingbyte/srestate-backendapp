@@ -28,6 +28,17 @@ Twilio Console → WhatsApp sandbox → **When a message comes in**:
 
 Tweak areas and property types in `inbox/estate_lexicon.json`.
 
+## Roz schedule (PythonAnywhere → Tasks)
+
+Server time is **UTC**. India = UTC+5:30.
+
+| Task | Cron (UTC) | Command |
+|------|------------|---------|
+| Due follow-up reminders | `*/15 * * * *` | `cd /home/YOURUSER/srestate-backendapp && ./venv/bin/python manage.py run_due_followups` |
+| Subah family digest | `30 3 * * *` (= **9:00 AM IST**) | `cd /home/YOURUSER/srestate-backendapp && ./venv/bin/python manage.py daily_family_digest` |
+
+WhatsApp: `followup kal 5pm …` | `pending` | `done 3`
+
 ## Adding an area
 
 Add the lowercase canonical area to the alphabetically sorted `area` list in

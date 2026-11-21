@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from inbox.models import FamilyMember, WhatsappEstateMessage
+from inbox.models import FamilyMember, FollowUpTask, WhatsappEstateMessage
 
 
 @admin.register(FamilyMember)
@@ -23,3 +23,10 @@ class WhatsappEstateMessageAdmin(admin.ModelAdmin):
     )
     list_filter = ("message_kind", "estate_type", "estate_status", "area")
     search_fields = ("raw_body", "sender_mobile", "area")
+
+
+@admin.register(FollowUpTask)
+class FollowUpTaskAdmin(admin.ModelAdmin):
+    list_display = ("id", "owner_mobile", "due_at", "status", "note", "created_at")
+    list_filter = ("status", "due_at")
+    search_fields = ("note", "owner_mobile")
