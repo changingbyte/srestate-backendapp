@@ -15,3 +15,6 @@ class Command(BaseCommand):
             )
             flag = "created" if created else "exists"
             self.stdout.write(f"{mobile}: {flag}")
+        self.stdout.write(
+            "Tip: Admin mein naam set karo — `assign rahul` kaam karega."
+        )

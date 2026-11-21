@@ -37,6 +37,35 @@ class WhatsappEstateMessage(models.Model):
         return f"{self.sender_mobile} @ {self.created_at:%Y-%m-%d}"
 
 
+class LeadRecord(models.Model):
+    """Who shared the lead, who should act, whom to contact."""
+
+    STATUS_OPEN = "open"
+    STATUS_DONE = "done"
+
+    listing = models.ForeignKey(
+        WhatsappEstateMessage,
+        on_delete=models.CASCADE,
+        related_name="leads",
+    )
+    shared_by_mobile = models.CharField(max_length=10, db_index=True)
+    assignee_mobile = models.CharField(max_length=10, db_index=True)
+    contact_mobile = models.CharField(max_length=10, blank=True, default="", db_index=True)
+    summary = models.CharField(max_length=255, blank=True, default="")
+    status = models.CharField(max_length=16, default=STATUS_OPEN, db_index=True)
+    next_action_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    action_note = models.CharField(max_length=255, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    last_nudge = models.CharField(max_length=16, blank=True, default="")
+
+    class Meta:
+        ordering = ("-created_at",)
+
+    def __str__(self):
+        return f"#{self.id} {self.summary} → {self.assignee_mobile}"
+
+
 class FollowUpTask(models.Model):
     STATUS_PENDING = "pending"
     STATUS_SENT = "sent"
@@ -51,6 +80,13 @@ class FollowUpTask(models.Model):
     reminded_at = models.DateTimeField(null=True, blank=True)
     listing = models.ForeignKey(
         WhatsappEstateMessage,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="followups",
+    )
+    lead = models.ForeignKey(
+        LeadRecord,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,

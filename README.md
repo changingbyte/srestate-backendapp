@@ -28,16 +28,14 @@ Twilio Console → WhatsApp sandbox → **When a message comes in**:
 
 Tweak areas and property types in `inbox/estate_lexicon.json`.
 
-## Roz schedule (PythonAnywhere → Tasks)
+## Roz 2 baar (PythonAnywhere → Tasks, UTC)
 
-Server time is **UTC**. India = UTC+5:30.
+| Kab (IST) | Cron (UTC) | Command |
+|-----------|------------|---------|
+| **9:00 AM** | `30 3 * * *` | `cd /home/princewhatsapp/srestate-backendapp && ./venv/bin/python manage.py daily_care_morning` |
+| **6:00 PM** | `30 12 * * *` | `cd /home/princewhatsapp/srestate-backendapp && ./venv/bin/python manage.py daily_care_evening` |
 
-| Task | Cron (UTC) | Command |
-|------|------------|---------|
-| Due follow-up reminders | `*/15 * * * *` | `cd /home/YOURUSER/srestate-backendapp && ./venv/bin/python manage.py run_due_followups` |
-| Subah family digest | `30 3 * * *` (= **9:00 AM IST**) | `cd /home/YOURUSER/srestate-backendapp && ./venv/bin/python manage.py daily_family_digest` |
-
-WhatsApp: `followup kal 5pm …` | `pending` | `done 3`
+Lead record: shared_by → assignee → contact. WhatsApp: `meri leads` | `assign 93…` | `ho gaya 3`
 
 ## Adding an area
 

@@ -1,80 +1,53 @@
-"""Hinglish user-facing WhatsApp replies."""
+"""Hinglish user-facing WhatsApp replies — helpful assistant tone."""
 
-WELCOME_TEXT = """*Namaste!* 👋
+WELCOME_TEXT = """*Namaste!* Main aapki property helper hoon 🤝
 
-Main aapki *family property bot* hoon.
+Property ka message *seedha paste* karo — main save karke record rakhta hoon:
+*kaun bheja*, *kis se baat karni hai*, *kis member ko kaam diya*.
 
-*Listing save kaise karein?*
-Property ki detail seedha likh kar bhej dein (area, BHK, rent/buy/budget).
-Example:
-`3 bhk flat adajan rent 25000`
+• `meri leads` — aapka poora dashboard  
+• `query adajan 3bhk` — purani listing dhundo  
+• `assign 9328059281` — lead family ko do  
+• `ho gaya 5` — kaam complete  
 
-*Enquiry / purani listing dhundhne ke liye:*
-`query 3bhk adajan rent`
-`query vesu flat last 30 days`
+Subah-shaam *ek short message* — duplicate spam nahi."""
 
-*Ek message mein kai listing:*
-Pehle `add` likhein, phir har listing ke beech khali line.
+HELP_TEXT = """*Short guide (extra homework nahi):*
 
-*Follow-up roz:*
-`followup kal 5pm adajan broker call`
-`pending` — aaj ke kaam
-`done 3` — complete
+*1) Listing save*  
+WhatsApp se jo property text aaye, paste kar do. Auto record:
+– Bhejne wala (aap)  
+– Broker/contact number  
+– Lead # id  
 
-*Poori guide:* `help` ya `madad`"""
+*2) Kisi ko dena*  
+`assign 9328059281` ya `assign 12 rahul`
 
-HELP_TEXT = """*SR Estate — kaise use karein*
+*3) Dhundhna*  
+`query vesu rent last 30 days`
 
-*1) Save (auto)*
-Koi bhi property message bhejein — system samajh kar save karega.
-`2 bhk vesu sell 85 lac`
+*4) Apna kaam dekho*  
+`meri leads`
 
-*2) Enquiry search*
-`query adajan rent`
-`query 3bhk pal last 30 days`
+*5) Ho gaya*  
+`ho gaya 3`
 
-*3) Kai listing ek saath*
-```
-add
-3 bhk adajan rent 22k
+*Roz 2 message:* subah plan, shaam halka check-in.
 
-2 bhk vesu sell 1.2 cr
-```
-
-*4) Follow-up schedule*
-`followup kal sham 6 vesu client visit`
-`followup 25/11 10am pal broker`
-`pending` — list
-`done 5` — khatam
-
-*5) Roz auto (server)*
-Subah *daily report* WhatsApp pe
-Due time pe *reminder* WhatsApp pe
-(PythonAnywhere Tasks mein set hota hai)
-
-*6) Shuruat*
-`hi` / `help` / `madad`
-
-Sirf *real estate* — health/travel wagaira save nahi hoga."""
+Sirf property related."""
 
 REJECT_MSG = (
-    "Yeh property message nahi lag raha.\n\n"
-    "*Save:* area + BHK + rent/buy + budget likh kar bhejein.\n"
-    "*Search:* `query 3bhk adajan rent`\n"
-    "*Guide:* `help` ya `hi`"
+    "Shayad yeh property listing nahi hai.\n"
+    "Area + BHK + rent/buy likh kar bhejo — main record bana dunga.\n"
+    "Ya `help` / `hi`"
 )
 
-WHITELIST_MSG = "Yeh number family list mein nahi hai. Admin se number add karvayein."
+WHITELIST_MSG = "Yeh number abhi family list mein nahi. Admin se add karvayein."
 
-QUERY_PARSE_FAIL = (
-    "Query samajh nahi aayi.\n"
-    "Example: `query 3bhk adajan rent` ya `query vesu last 30 days`"
-)
+QUERY_PARSE_FAIL = "Thoda clear likho: `query 3bhk adajan rent`"
 
-QUERY_EMPTY = "Aisi koi listing archive mein nahi mili. Pehle kuch property message save karein."
+QUERY_EMPTY = "Database mein match nahi mila. Pehle listing save karo ya alag keyword try karo."
 
-SAVE_OK = "✅ *Save ho gayi!*\n\n"
+ADD_OK_PREFIX = "✅ {count} listing save + lead record:\n\n"
 
-ADD_OK_PREFIX = "✅ *{count} listing save ho gayi!*\n\n"
-
-QUERY_OK_PREFIX = "*Mili hui listings:*\n\n"
+QUERY_OK_PREFIX = "*Yeh mili listings:*\n\n"

@@ -197,7 +197,11 @@ _FOLLOWUP_PREFIXES = ("followup", "follow-up", "reminder", "yaad dilao", "yaad")
 
 _PENDING_PREFIXES = ("pending", "meri followup", "meri follow up", "due list", "aaj ka kaam")
 
-_DONE_PREFIXES = ("done", "ho gaya", "complete", "khatam")
+_LEADS_PREFIXES = ("meri leads", "leads", "lead list", "dashboard", "record")
+
+_ASSIGN_PREFIXES = ("assign", "bhejo", "de do", "transfer")
+
+_DONE_PREFIXES = ("done", "ho gaya", "complete", "khatam", "ho gya")
 
 
 def is_greeting_only(body: str) -> bool:
@@ -257,14 +261,22 @@ def strip_command_prefix(body: str) -> tuple[str, str | None]:
         if lower.startswith(prefix + " "):
             return text[len(prefix) :].strip(), "followup"
 
+    for prefix in _LEADS_PREFIXES:
+        if lower == prefix or lower.startswith(prefix + " "):
+            return "", "leads"
+
+    for prefix in _ASSIGN_PREFIXES:
+        if lower.startswith(prefix + " "):
+            return text[len(prefix) :].strip(), "assign"
+
     for prefix in _PENDING_PREFIXES:
         if lower == prefix or lower.startswith(prefix + " "):
-            return "", "pending"
+            return "", "leads"
 
     for prefix in _DONE_PREFIXES:
         if lower.startswith(prefix + " "):
             return text[len(prefix) :].strip(), "done"
         if lower == prefix:
-            return "", "pending"
+            return "", "leads"
 
     return text, None
