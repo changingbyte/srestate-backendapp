@@ -139,8 +139,8 @@ def handle_inbound(from_mobile: str, body: str, twilio_sid: str = "") -> str:
             return "Pehle koi property ka message bhejo, phir yaad set karenge."
         schedule_lead_action(lead, due, note, from_mobile)
         return (
-            f"Theek hai ji.\n"
-            f"Diary no. {lead.id} - {due:%d/%m %H:%M} ko yaad dilaaunga.\n"
+            f"✅ Theek hai ji.\n"
+            f"Diary no. {lead.id} — {due:%d/%m %H:%M} ko yaad dilaaunga.\n"
             f"({note})\n"
             f"Subah-shaam wale message mein dikhega."
         )

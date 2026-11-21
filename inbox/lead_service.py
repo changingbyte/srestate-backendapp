@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 import re
 
 from django.conf import settings
@@ -13,8 +12,6 @@ from inbox.family_access import member_label, pick_operator_assignee
 from inbox.lead_events import log_event
 from inbox.models import FamilyMember, LeadRecord, WhatsappEstateMessage
 from inbox.twilio_client import send_whatsapp
-
-logger = logging.getLogger(__name__)
 
 
 def _member_label(mobile: str) -> str:
@@ -73,21 +70,17 @@ def create_lead_from_listing(
     log_event(lead, "assigned", "system", f"auto → {member_label(assignee)}")
     touch_last_lead(shared_by, lead.id)
     touch_last_lead(assignee, lead.id)
-    lead.notify_ok = True
     if assignee != shared_by:
-        ok, detail = send_whatsapp(
+        send_whatsapp(
             assignee,
             (
-                f"*Naya kaam - {member_label(shared_by)} ne bheja*\n\n"
+                f"*Naya kaam — {member_label(shared_by)} ne bheja*\n\n"
                 f"{lead.summary}\n"
-                f"Phone: {contact or 'message dekho'}\n"
+                f"📞 {contact or 'message dekho'}\n"
                 f"Diary no. {lead.id}\n\n"
                 f"Ho jaye to: *ho gaya {lead.id}*"
             ),
         )
-        lead.notify_ok = ok
-        if not ok:
-            logger.error("Operator notify failed mobile=%s detail=%s", assignee, detail)
     if dup and dup.id != lead.id:
         log_event(lead, "duplicate_warn", shared_by, f"similar to #{dup.id}")
     return lead, dup
@@ -109,25 +102,23 @@ def _assign_hint_lines() -> list[str]:
 def save_reply_with_lead(lead: LeadRecord, duplicate: LeadRecord | None = None) -> str:
     who = member_label(lead.assignee_mobile)
     lines = [
-        "OK. *Save ho gaya.*",
+        "✅ *Save ho gaya.*",
         "",
         f"*{lead.summary}*",
-        f"Kaam -> *{who}* (auto)",
+        f"👤 Kaam → *{who}* (auto)",
     ]
     if lead.contact_mobile:
-        lines.append(f"Phone: {lead.contact_mobile}")
-    lines.append(f"Diary no. *{lead.id}*")
+        lines.append(f"📞 Phone: {lead.contact_mobile}")
+    lines.append(f"📝 Diary no. *{lead.id}*")
     if duplicate:
         lines.append("")
         lines.append(
-            f"Dhyan: pehle bhi similar (#{duplicate.id}). "
+            f"⚠️ *Dhyan:* pehle bhi similar (#{duplicate.id}) — double save ho sakta hai. "
             f"Same ho to *ho gaya {lead.id}* likh kar hata dena."
         )
-    if getattr(lead, "notify_ok", True) is False and lead.assignee_mobile != lead.shared_by_mobile:
-        lines.append(f"{who} ko WhatsApp nahi gaya. Unhe call kar lena.")
     if lead.assignee_mobile != lead.shared_by_mobile:
-        lines.append("Aur kisi ko dena ho: *de do naam*")
-    lines.append("*meri list* - aaj kya bacha")
+        lines.append("_Aur kisi ko dena ho: *de do naam*_")
+    lines.append("*meri list* — aaj kya bacha")
     return "\n".join(lines)
 
 
@@ -189,7 +180,7 @@ def assign_lead(actor_mobile: str, remainder: str) -> str:
         if not lead:
             lead = LeadRecord.objects.filter(status=LeadRecord.STATUS_OPEN).order_by("-created_at").first()
         if not lead:
-            return "Abhi koi open enquiry nahi. Pehle property ka message bhejo."
+            return "Abhi koi open enquiry nahi — pehle property ka message bhejo."
 
     lead.assignee_mobile = target
     lead.save(update_fields=["assignee_mobile"])
@@ -198,21 +189,18 @@ def assign_lead(actor_mobile: str, remainder: str) -> str:
     touch_last_lead(target, lead.id)
     to_name = _member_label(target)
     from_name = _member_label(lead.shared_by_mobile)
-    ok, detail = send_whatsapp(
+    send_whatsapp(
         target,
         (
             f"*Namaste {to_name} ji,*\n"
             f"{from_name} ne aapko ek property di hai:\n\n"
             f"{lead.summary}\n"
-            f"Phone: {lead.contact_mobile or 'number message mein hai'}\n"
+            f"📞 {lead.contact_mobile or 'number message mein hai'}\n"
             f"Diary no. {lead.id}\n\n"
             f"Ho jaye to likhna: *ho gaya {lead.id}*"
         ),
     )
-    if not ok:
-        logger.error("Assign notify failed mobile=%s detail=%s", target, detail)
-        return f"{to_name} ko WhatsApp nahi gaya. Unhe call kar lena. Diary no. {lead.id}."
-    return f"*{to_name}* ko bata diya. Property diary no. {lead.id}."
+    return f"✅ *{to_name}* ko bata diya. Property diary no. {lead.id}."
 
 
 def complete_lead(actor_mobile: str, lead_id: int | None) -> str:
@@ -252,13 +240,11 @@ def complete_lead(actor_mobile: str, lead_id: int | None) -> str:
     log_event(lead, "done", actor_mobile, "")
     touch_last_lead(actor_mobile, lead.id)
     if lead.shared_by_mobile != actor_mobile:
-        ok, detail = send_whatsapp(
+        send_whatsapp(
             lead.shared_by_mobile,
-            f"Khush khabri: {_member_label(actor_mobile)} ne property no. {lead.id} complete kar di.\n{lead.summary}",
+            f"✅ Khush khabri: {_member_label(actor_mobile)} ne property no. {lead.id} complete kar di.\n{lead.summary}",
         )
-        if not ok:
-            logger.error("Complete notify failed mobile=%s detail=%s", lead.shared_by_mobile, detail)
-    return f"Bahut achha! No. {lead.id} band - {lead.summary}\nDhanyavaad"
+    return f"✅ Bahut achha! No. {lead.id} band — {lead.summary}\nDhanyavaad 🙏"
 
 
 def format_my_leads(mobile: str) -> str:

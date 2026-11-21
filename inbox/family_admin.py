@@ -30,7 +30,7 @@ def handle_remove_member(actor: str, token: str) -> str:
         return "Super admin ko band nahi kar sakte."
     m.is_active = False
     m.save(update_fields=["is_active"])
-    return f"*{m.name}* ({m.mobile}) ab bot use nahi kar payega."
+    return f"✅ *{m.name}* ({m.mobile}) ab bot use nahi kar payega."
 
 
 def handle_add_member(actor: str, remainder: str) -> str:
@@ -45,4 +45,4 @@ def handle_add_member(actor: str, remainder: str) -> str:
         defaults={"name": name, "role": ROLE_TESTER, "is_active": True},
     )
     verb = "joda" if created else "update kiya"
-    return f"*{obj.name}* ({mobile}) {verb}. Ab WhatsApp se message kar sakta hai."
+    return f"✅ *{obj.name}* ({mobile}) {verb}. Ab WhatsApp se message kar sakta hai."
