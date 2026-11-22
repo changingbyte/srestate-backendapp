@@ -15,6 +15,9 @@ class Command(BaseCommand):
         self.stdout.write(f"TWILIO_WHATSAPP_FROM: {settings.TWILIO_WHATSAPP_FROM}")
         self.stdout.write(f"TWILIO_VALIDATE_SIGNATURE: {settings.TWILIO_VALIDATE_SIGNATURE}")
         self.stdout.write(f"TWILIO_WEBHOOK_URL: {getattr(settings, 'TWILIO_WEBHOOK_URL', '') or '(empty — set on PA if validate on)'}")
+        self.stdout.write(f"WHATSAPP_REPLY_VIA_TWIML: {settings.WHATSAPP_REPLY_VIA_TWIML}")
+        self.stdout.write(f"WHATSAPP_REST_OPERATOR_NOTIFY: {settings.WHATSAPP_REST_OPERATOR_NOTIFY}")
+        self.stdout.write(f"WHATSAPP_REST_DAILY_CARE: {settings.WHATSAPP_REST_DAILY_CARE}")
         self.stdout.write(f"ALLOWED_HOSTS: {settings.ALLOWED_HOSTS}")
         self.stdout.write(f"FAMILY_ALLOWED_MOBILES: {settings.FAMILY_ALLOWED_MOBILES}")
         for m in FamilyMember.objects.order_by("mobile"):

@@ -1,6 +1,6 @@
 """Critical real-life cases: assign order, admin, search, rent, block."""
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 
 from inbox.family_access import ensure_roster, is_family_allowed, operator_mobiles, pick_operator_assignee
 from inbox.handlers import handle_inbound
@@ -67,13 +67,14 @@ class CriticalScenarioTests(TestCase):
             0,
         )
 
+    @override_settings(WHATSAPP_REST_OPERATOR_NOTIFY=True)
     def test_manual_reassign_to_named_operator(self):
         handle_inbound(SHUBHAM, "Add 3bhk vesu sell")
         lead = LeadRecord.objects.latest("id")
         other = JITEN if lead.assignee_mobile == JP else JP
         name = "jitendra" if other == JITEN else "jp"
         r = handle_inbound(PRINCE, f"de do {name}")
-        self.assertIn("bata diya", r)
+        self.assertIn("bhej diya", r)
         lead.refresh_from_db()
         self.assertEqual(lead.assignee_mobile, other)
 

@@ -34,7 +34,7 @@ def send_due_followup_reminders() -> int:
             f"Due: {task.due_at:%d/%m/%Y %H:%M}\n"
             f"Done? Reply: `done {task.id}`"
         )
-        ok, _ = send_whatsapp(task.owner_mobile, body)
+        ok, _ = send_whatsapp(task.owner_mobile, body, purpose="care")
         if ok:
             task.status = FollowUpTask.STATUS_SENT
             task.reminded_at = now
@@ -44,6 +44,8 @@ def send_due_followup_reminders() -> int:
 
 
 def send_daily_digest() -> int:
+    if not getattr(settings, "WHATSAPP_REST_DAILY_CARE", False):
+        return 0
     now = timezone.localtime()
     start_yesterday = now - timedelta(days=1)
     sent = 0
@@ -75,7 +77,7 @@ def send_daily_digest() -> int:
             lines.append("Aaj koi follow-up schedule nahi (ya sab ho chuka).")
         lines.append("\n`pending` — poori list | `followup kal …` — naya")
 
-        ok, _ = send_whatsapp(mobile, "\n".join(lines))
+        ok, _ = send_whatsapp(mobile, "\n".join(lines), purpose="care")
         if ok:
             sent += 1
     return sent

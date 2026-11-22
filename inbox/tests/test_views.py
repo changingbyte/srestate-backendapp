@@ -6,18 +6,21 @@ from django.test import TestCase, override_settings
 @override_settings(
     TWILIO_VALIDATE_SIGNATURE=False,
     FAMILY_ALLOWED_MOBILES=["9328059281"],
+    WHATSAPP_REPLY_VIA_TWIML=True,
 )
 class WhatsappInboundViewTests(TestCase):
-    def test_help_replies_via_twiml_when_rest_send_fails(self):
-        with patch("inbox.views.send_whatsapp", return_value=(False, "error 21608")):
+    def test_help_replies_via_twiml_by_default(self):
+        with patch("inbox.views.send_whatsapp") as mock_send:
             response = self.client.post(
                 "/whatsapp/inbound/",
                 {"From": "whatsapp:+919328059281", "Body": "madad", "MessageSid": "SM1"},
             )
+        mock_send.assert_not_called()
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Seedhi guide", response.content)
         self.assertIn(b"<Message>", response.content)
 
+    @override_settings(WHATSAPP_REPLY_VIA_TWIML=False)
     def test_rest_ok_returns_empty_twiml(self):
         with patch("inbox.views.send_whatsapp", return_value=(True, "SM99")):
             response = self.client.post(

@@ -70,17 +70,20 @@ def create_lead_from_listing(
     log_event(lead, "assigned", "system", f"auto → {member_label(assignee)}")
     touch_last_lead(shared_by, lead.id)
     touch_last_lead(assignee, lead.id)
+    lead.notify_ok = True
     if assignee != shared_by:
-        send_whatsapp(
+        ok, _ = send_whatsapp(
             assignee,
             (
-                f"*Naya kaam — {member_label(shared_by)} ne bheja*\n\n"
+                f"*Naya kaam - {member_label(shared_by)} ne bheja*\n\n"
                 f"{lead.summary}\n"
-                f"📞 {contact or 'message dekho'}\n"
+                f"Phone: {contact or 'message dekho'}\n"
                 f"Diary no. {lead.id}\n\n"
                 f"Ho jaye to: *ho gaya {lead.id}*"
             ),
+            purpose="operator",
         )
+        lead.notify_ok = ok
     if dup and dup.id != lead.id:
         log_event(lead, "duplicate_warn", shared_by, f"similar to #{dup.id}")
     return lead, dup
@@ -117,6 +120,14 @@ def save_reply_with_lead(lead: LeadRecord, duplicate: LeadRecord | None = None) 
             f"Same ho to *ho gaya {lead.id}* likh kar hata dena."
         )
     if lead.assignee_mobile != lead.shared_by_mobile:
+        notify_ok = getattr(lead, "notify_ok", True)
+        if notify_ok:
+            lines.append(f"_{who} ko WhatsApp par bata diya._")
+        else:
+            lines.append(
+                f"_{who} ko diary mein assign hai; auto-WhatsApp band hai (Twilio limit). "
+                f"*meri list* se dekho._"
+            )
         lines.append("_Aur kisi ko dena ho: *de do naam*_")
     lines.append("*meri list* — aaj kya bacha")
     return "\n".join(lines)
@@ -189,18 +200,21 @@ def assign_lead(actor_mobile: str, remainder: str) -> str:
     touch_last_lead(target, lead.id)
     to_name = _member_label(target)
     from_name = _member_label(lead.shared_by_mobile)
-    send_whatsapp(
+    ok, _ = send_whatsapp(
         target,
         (
             f"*Namaste {to_name} ji,*\n"
             f"{from_name} ne aapko ek property di hai:\n\n"
             f"{lead.summary}\n"
-            f"📞 {lead.contact_mobile or 'number message mein hai'}\n"
+            f"Phone: {lead.contact_mobile or 'number message mein hai'}\n"
             f"Diary no. {lead.id}\n\n"
             f"Ho jaye to likhna: *ho gaya {lead.id}*"
         ),
+        purpose="assign",
     )
-    return f"✅ *{to_name}* ko bata diya. Property diary no. {lead.id}."
+    if ok:
+        return f"*{to_name}* ko WhatsApp bhej diya. Diary no. {lead.id}."
+    return f"*{to_name}* ko diary mein assign ho gaya (no. {lead.id}). WhatsApp band hai - *meri list* dekho."
 
 
 def complete_lead(actor_mobile: str, lead_id: int | None) -> str:
@@ -242,7 +256,8 @@ def complete_lead(actor_mobile: str, lead_id: int | None) -> str:
     if lead.shared_by_mobile != actor_mobile:
         send_whatsapp(
             lead.shared_by_mobile,
-            f"✅ Khush khabri: {_member_label(actor_mobile)} ne property no. {lead.id} complete kar di.\n{lead.summary}",
+            f"Khush khabri: {_member_label(actor_mobile)} ne property no. {lead.id} complete kar di.\n{lead.summary}",
+            purpose="complete",
         )
     return f"✅ Bahut achha! No. {lead.id} band — {lead.summary}\nDhanyavaad 🙏"
 
@@ -286,7 +301,7 @@ def send_care_message(mobile: str, slot: str) -> bool:
     from inbox.family_digest import build_group_care_message
 
     body = build_group_care_message(slot, mobile)
-    ok, _ = send_whatsapp(mobile, body)
+    ok, _ = send_whatsapp(mobile, body, purpose="care")
     if ok:
         open_mine = LeadRecord.objects.filter(
             assignee_mobile=mobile,
@@ -298,6 +313,8 @@ def send_care_message(mobile: str, slot: str) -> bool:
 
 
 def send_twice_daily_care(slot: str) -> int:
+    if not getattr(settings, "WHATSAPP_REST_DAILY_CARE", False):
+        return 0
     count = 0
     for mobile in settings.FAMILY_ALLOWED_MOBILES:
         if send_care_message(mobile, slot):

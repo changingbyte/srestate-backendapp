@@ -69,7 +69,10 @@ def whatsapp_inbound(request):
         logger.exception("handle_inbound failed sid=%s mobile=%s", sid, from_mobile)
         reply = "Maaf kijiye, abhi error aaya. Thodi der baad dubara bhejiye ya Prince ko bolo."
 
-    ok, detail = send_whatsapp(from_mobile, reply)
+    if getattr(settings, "WHATSAPP_REPLY_VIA_TWIML", True):
+        return _twiml_message(reply)
+
+    ok, detail = send_whatsapp(from_mobile, reply, purpose="general")
     if ok:
         return HttpResponse("<Response></Response>", content_type="text/xml")
     logger.error("REST WhatsApp send failed mobile=%s detail=%s", from_mobile, detail)

@@ -84,6 +84,23 @@ TWILIO_VALIDATE_SIGNATURE = os.environ.get("TWILIO_VALIDATE_SIGNATURE", "False")
 # Exact Twilio console webhook URL (https). Required when TWILIO_VALIDATE_SIGNATURE=True on PA.
 TWILIO_WEBHOOK_URL = os.environ.get("TWILIO_WEBHOOK_URL", "").strip()
 
+# Twilio trial: avoid error 63038 (daily cap). TwiML webhook reply does not use REST quota.
+WHATSAPP_REPLY_VIA_TWIML = os.environ.get("WHATSAPP_REPLY_VIA_TWIML", "true").lower() in (
+    "1",
+    "true",
+    "yes",
+)
+WHATSAPP_REST_OPERATOR_NOTIFY = os.environ.get("WHATSAPP_REST_OPERATOR_NOTIFY", "false").lower() in (
+    "1",
+    "true",
+    "yes",
+)
+WHATSAPP_REST_DAILY_CARE = os.environ.get("WHATSAPP_REST_DAILY_CARE", "false").lower() in (
+    "1",
+    "true",
+    "yes",
+)
+
 FAMILY_ALLOWED_MOBILES = [
     m.strip()
     for m in os.environ.get("FAMILY_ALLOWED_MOBILES", "").split(",")
