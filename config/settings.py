@@ -81,6 +81,8 @@ TWILIO_VALIDATE_SIGNATURE = os.environ.get("TWILIO_VALIDATE_SIGNATURE", "False")
     "true",
     "yes",
 )
+# Exact Twilio console webhook URL (https). Required when TWILIO_VALIDATE_SIGNATURE=True on PA.
+TWILIO_WEBHOOK_URL = os.environ.get("TWILIO_WEBHOOK_URL", "").strip()
 
 FAMILY_ALLOWED_MOBILES = [
     m.strip()
